@@ -1,0 +1,33 @@
+﻿Analyzing mobile...                                             
+
+warning - Unused import: '../../../data/models/register_response.dart' - lib\presentation\auth\controllers\auth_controller.dart:8:8 - unused_import
+   info - Unnecessary use of multiple underscores - lib\presentation\home\widgets\student_card_widget.dart:54:31 - unnecessary_underscores
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\presentation\profile\screens\parent_profile_screen.dart:570:33 - deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\presentation\profile\screens\parent_profile_screen.dart:673:23 - deprecated_member_use
+warning - Unused import: '../../../core/theme/app_colors.dart' - lib\presentation\profile\screens\payment_history_screen.dart:3:8 - unused_import
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\presentation\profile\screens\student_profile_screen.dart:537:33 - deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\presentation\profile\screens\student_profile_screen.dart:631:23 - deprecated_member_use
+   info - Unnecessary braces in a string interpolation - lib\presentation\profile\screens\ticket_management_screen.dart:395:16 - unnecessary_brace_in_string_interps
+warning - The value of the local variable 'borderColor' isn't used - lib\presentation\profile\widgets\transaction_item.dart:39:11 - unused_local_variable
+   info - Unnecessary use of multiple underscores - lib\presentation\ticket\screens\parent_book_ticket_screen.dart:181:37 - unnecessary_underscores
+   info - Unnecessary use of multiple underscores - lib\presentation\ticket\screens\parent_book_ticket_screen.dart:899:37 - unnecessary_underscores
+   info - Unnecessary use of multiple underscores - lib\presentation\ticket\screens\student_book_ticket_screen.dart:719:37 - unnecessary_underscores
+
+flutter : 12 issues 
+found. (ran in 3.4s)
+At line:1 char:1
++ flutter analyze 
+--no-fatal-infos 2>&1 | 
+Out-File -FilePath 
+analyze_ou ...
++ ~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (12 issues found. (r   
+ an in 3.4s):String)     
+[], RemoteException
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 
