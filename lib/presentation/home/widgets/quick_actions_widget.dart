@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
 
-/// Widget hiển thị 4 nút hành động nhanh: Đặt vé, Chat TX, Xin nghỉ, Lịch sử.
+/// Widget hiển thị 4 nút hành động nhanh: Đặt vé, Tư vấn, Xin nghỉ, Lịch sử.
 /// Theo design HTML: grid 4 cột, tất cả icon dùng primary color, size 56px.
 class QuickActionsWidget extends StatelessWidget {
   final VoidCallback? onBookTicket;
+  final VoidCallback? onChatbot;
+  final VoidCallback? onLeaveRequest;
   final VoidCallback? onHistory;
 
-  const QuickActionsWidget({super.key, this.onBookTicket, this.onHistory});
+  const QuickActionsWidget({
+    super.key,
+    this.onBookTicket,
+    this.onChatbot,
+    this.onLeaveRequest,
+    this.onHistory,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,18 +33,18 @@ class QuickActionsWidget extends StatelessWidget {
           onTap: onBookTicket ?? () {},
         ),
         _ActionButton(
-          icon: Icons.chat_bubble_rounded,
-          label: 'Chat TX',
+          icon: Icons.smart_toy_rounded,
+          label: 'Tư vấn',
           colorScheme: colorScheme,
           isDark: isDark,
-          onTap: () {},
+          onTap: onChatbot ?? () {},
         ),
         _ActionButton(
           icon: Icons.event_busy_rounded,
           label: 'Xin nghỉ',
           colorScheme: colorScheme,
           isDark: isDark,
-          onTap: () {},
+          onTap: onLeaveRequest ?? () {},
         ),
         _ActionButton(
           icon: Icons.history_rounded,

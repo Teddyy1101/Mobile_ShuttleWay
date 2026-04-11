@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/child_model.dart';
 import '../../../data/models/ticket_model.dart';
 import '../../profile/controllers/profile_controller.dart';
+import '../../ticket/screens/ticket_detail_screen.dart';
 
 /// Màn hình lịch sử vé — mở từ nút "Lịch sử" ở Quick Actions.
 class TicketHistoryScreen extends StatefulWidget {
@@ -567,121 +568,14 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
     );
   }
 
-  // Ticket detail bottom sheet
+  // Mở chi tiết vé (toàn màn hình có QR code)
 
   void _showTicketDetail(TicketModel ticket) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final sheetBg = isDark ? const Color(0xFF1C252E) : Colors.white;
-    final isMonthly = ticket.ticketType == 'MONTHLY';
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: sheetBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TicketDetailScreen(ticket: ticket),
       ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Handle bar
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[400],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Icon + type
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [
-                      isMonthly ? theme.colorScheme.primary : Colors.orange,
-                      isMonthly
-                          ? theme.colorScheme.primary.withValues(alpha: 0.7)
-                          : Colors.orange.withValues(alpha: 0.7),
-                    ]),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isMonthly
-                                ? theme.colorScheme.primary
-                                : Colors.orange)
-                            .withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    isMonthly
-                        ? Icons.confirmation_number_outlined
-                        : Icons.local_activity_outlined,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isMonthly ? 'Vé tháng' : 'Vé lượt',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                _StatusBadge(status: ticket.status),
-                const SizedBox(height: 24),
-                _DetailRow(
-                  isDark: isDark,
-                  icon: Icons.route_outlined,
-                  label: 'Tuyến',
-                  value: ticket.route?.name ?? 'N/A',
-                ),
-                _DetailRow(
-                  isDark: isDark,
-                  icon: Icons.payments_outlined,
-                  label: 'Giá vé',
-                  value:
-                      '${NumberFormat('#,###', 'vi_VN').format(ticket.priceAtBuy.abs())}đ',
-                ),
-                _DetailRow(
-                  isDark: isDark,
-                  icon: Icons.date_range_outlined,
-                  label: 'Hiệu lực',
-                  value:
-                      '${DateFormat('dd/MM/yyyy').format(ticket.validFrom.toLocal())} → ${DateFormat('dd/MM/yyyy').format(ticket.validUntil.toLocal())}',
-                ),
-                if (ticket.student != null)
-                  _DetailRow(
-                    isDark: isDark,
-                    icon: Icons.school_outlined,
-                    label: 'Học sinh',
-                    value: ticket.student!.fullName,
-                  ),
-                _DetailRow(
-                  isDark: isDark,
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Ngày mua',
-                  value: DateFormat('dd/MM/yyyy HH:mm')
-                      .format(ticket.createdAt.toLocal()),
-                  isLast: true,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }
@@ -805,19 +699,23 @@ class _TicketHistoryCard extends StatelessWidget {
                         ),
                       ),
                       if (ticket.student != null) ...[
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         Icon(
                           Icons.person_outline_rounded,
                           size: 11,
                           color: isDark ? Colors.grey[500] : Colors.grey[400],
                         ),
                         const SizedBox(width: 3),
-                        Text(
-                          ticket.student!.fullName,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color:
-                                isDark ? Colors.grey[500] : Colors.grey[400],
+                        Flexible(
+                          child: Text(
+                            ticket.student!.fullName,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color:
+                                  isDark ? Colors.grey[500] : Colors.grey[400],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -898,72 +796,5 @@ class _StatusBadge extends StatelessWidget {
           textColor: Colors.grey,
         );
     }
-  }
-}
-
-/// Row chi tiết trong bottom sheet vé.
-class _DetailRow extends StatelessWidget {
-  final bool isDark;
-  final IconData icon;
-  final String label;
-  final String value;
-  final bool isLast;
-
-  const _DetailRow({
-    required this.isDark,
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            children: [
-              Icon(icon, size: 18,
-                  color: isDark ? Colors.grey[400] : Colors.grey[500]),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 80,
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.grey[400] : Colors.grey[500],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Colors.grey[900],
-                  ),
-                  textAlign: TextAlign.end,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (!isLast)
-          Divider(
-            height: 1,
-            thickness: 0.5,
-            color: isDark
-                ? Colors.grey[800]!.withValues(alpha: 0.5)
-                : Colors.grey[200],
-          ),
-      ],
-    );
   }
 }

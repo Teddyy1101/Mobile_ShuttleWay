@@ -2,21 +2,18 @@ import 'package:dio/dio.dart';
 import '../../core/network/dio_client.dart';
 import '../models/trip_model.dart';
 
-/// Data source giao tiếp trực tiếp với backend cho luồng Trip/Tracking.
 class TripApi {
   final DioClient _dioClient;
 
   TripApi(this._dioClient);
 
-  /// Gọi API `GET /trips/my-active-trips`.
-  /// Trả về danh sách [TripModel] đang IN_PROGRESS thuộc tuyến có vé ACTIVE.
   Future<List<TripModel>> getMyActiveTrips() async {
     try {
       final response = await _dioClient.dio.get('/trips/my-active-trips');
 
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;
-        final result = data['result'] as List<dynamic>? ?? [];
+        final result = data['data'] as List<dynamic>? ?? [];
         return result
             .map((e) => TripModel.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -42,7 +39,9 @@ class TripApi {
       final response = await _dioClient.dio.get('/trips/$tripId/tracking');
 
       if (response.statusCode == 200) {
-        return TripModel.fromJson(response.data as Map<String, dynamic>);
+        final data = response.data as Map<String, dynamic>;
+        final tripData = data['data'] as Map<String, dynamic>;
+        return TripModel.fromJson(tripData);
       }
 
       throw DioException(
@@ -77,7 +76,7 @@ class TripApi {
 
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;
-        final result = data['result'] as List<dynamic>? ?? [];
+        final result = data['data'] as List<dynamic>? ?? [];
         return result
             .map((e) => TripModel.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -96,3 +95,4 @@ class TripApi {
     }
   }
 }
+

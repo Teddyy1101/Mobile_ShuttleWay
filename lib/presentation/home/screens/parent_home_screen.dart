@@ -13,9 +13,16 @@ import '../../profile/screens/parent_profile_screen.dart';
 import '../../profile/screens/student_profile_screen.dart';
 import '../../ticket/controllers/ticket_controller.dart';
 import '../../ticket/controllers/payment_controller.dart';
+import '../../notification/controllers/notification_controller.dart';
+import '../../notification/screens/notification_screen.dart';
+import '../../../core/network/dio_client.dart';
+import '../../../core/network/fcm_service.dart';
+import '../../../core/network/notification_socket_service.dart';
 import '../controllers/leave_request_controller.dart';
 import '../controllers/schedule_controller.dart';
+import '../controllers/chatbot_controller.dart';
 import 'schedule_screen.dart';
+import 'chatbot_screen.dart';
 import '../../ticket/screens/parent_book_ticket_screen.dart';
 import '../../ticket/screens/student_book_ticket_screen.dart';
 
@@ -24,6 +31,7 @@ import '../widgets/quick_actions_widget.dart';
 import '../widgets/bus_map_widget.dart';
 import '../widgets/recent_activities_widget.dart';
 import '../widgets/bottom_nav_bar_widget.dart';
+import 'leave_request_screen.dart';
 import 'ticket_history_screen.dart';
 
 /// Trang chủ chung cho cả phụ huynh và học sinh.
@@ -37,6 +45,11 @@ class ParentHomeScreen extends StatefulWidget {
   final MapController mapController;
   final LeaveRequestController leaveRequestController;
   final ScheduleController scheduleController;
+  final NotificationController notificationController;
+  final ChatbotController chatbotController;
+  final FcmService fcmService;
+  final DioClient dioClient;
+  final NotificationSocketService notificationSocketService;
 
   const ParentHomeScreen({
     super.key,
@@ -49,6 +62,11 @@ class ParentHomeScreen extends StatefulWidget {
     required this.mapController,
     required this.leaveRequestController,
     required this.scheduleController,
+    required this.notificationController,
+    required this.chatbotController,
+    required this.fcmService,
+    required this.dioClient,
+    required this.notificationSocketService,
   });
 
   @override
@@ -125,6 +143,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
           scheduleController: widget.scheduleController,
           profileController: widget.profileController,
           leaveRequestController: widget.leaveRequestController,
+          notificationController: widget.notificationController,
         );
       case 3:
         if (widget.profileController.isParent) {
@@ -139,6 +158,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
             mapController: widget.mapController,
             leaveRequestController: widget.leaveRequestController,
             scheduleController: widget.scheduleController,
+            notificationController: widget.notificationController,
+            chatbotController: widget.chatbotController,
+            fcmService: widget.fcmService,
+            dioClient: widget.dioClient,
+            notificationSocketService: widget.notificationSocketService,
           );
         } else {
           return StudentProfileScreen(
@@ -152,6 +176,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
             mapController: widget.mapController,
             leaveRequestController: widget.leaveRequestController,
             scheduleController: widget.scheduleController,
+            notificationController: widget.notificationController,
+            chatbotController: widget.chatbotController,
+            fcmService: widget.fcmService,
+            dioClient: widget.dioClient,
+            notificationSocketService: widget.notificationSocketService,
           );
         }
       case 0:
@@ -257,6 +286,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
               const SizedBox(height: AppConstants.paddingLG),
               QuickActionsWidget(
                 onBookTicket: () => _navigateToBookTicket(),
+                onChatbot: () => _navigateToChatbot(),
+                onLeaveRequest: () => _navigateToLeaveRequest(),
                 onHistory: () => _navigateToTicketHistory(),
               ),
               const SizedBox(height: AppConstants.paddingLG),
@@ -318,6 +349,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
               // ─── Quick Actions ───
               QuickActionsWidget(
                 onBookTicket: () => _navigateToBookTicket(),
+                onChatbot: () => _navigateToChatbot(),
+                onLeaveRequest: () => _navigateToLeaveRequest(),
                 onHistory: () => _navigateToTicketHistory(),
               ),
               const SizedBox(height: AppConstants.paddingLG),
@@ -430,7 +463,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
                 color: isDark ? AppColors.darkCard : AppColors.lightCard,
               ),
               child: IconButton(
-                onPressed: () {},
+                onPressed: () => _navigateToNotifications(),
                 icon: Icon(
                   Icons.notifications_none_rounded,
                   size: AppConstants.iconSizeSM,
@@ -442,19 +475,27 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
             Positioned(
               top: 8,
               right: 10,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: AppColors.error,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isDark
-                        ? AppColors.darkBackground
-                        : AppColors.lightBackground,
-                    width: 1.5,
-                  ),
-                ),
+              child: ListenableBuilder(
+                listenable: widget.notificationController,
+                builder: (context, _) {
+                  if (widget.notificationController.unreadCount == 0) {
+                    return const SizedBox.shrink();
+                  }
+                  return Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: AppColors.error,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.darkBackground
+                            : AppColors.lightBackground,
+                        width: 1.5,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -768,9 +809,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
                 color: isDark ? AppColors.darkCard : AppColors.lightCard,
               ),
               child: IconButton(
-                onPressed: () {
-                  // TODO: Navigate to notifications
-                },
+                onPressed: () => _navigateToNotifications(),
                 icon: Icon(
                   Icons.notifications_none_rounded,
                   size: AppConstants.iconSizeSM,
@@ -782,24 +821,82 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
             Positioned(
               top: 8,
               right: 10,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: AppColors.error,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isDark
-                        ? AppColors.darkBackground
-                        : AppColors.lightBackground,
-                    width: 1.5,
-                  ),
-                ),
+              child: ListenableBuilder(
+                listenable: widget.notificationController,
+                builder: (context, _) {
+                  if (widget.notificationController.unreadCount == 0) {
+                    return const SizedBox.shrink();
+                  }
+                  return Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: AppColors.error,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.darkBackground
+                            : AppColors.lightBackground,
+                        width: 1.5,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],
         ),
       ],
+    );
+  }
+
+  /// Navigate sang trang thông báo.
+  void _navigateToNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NotificationScreen(
+          controller: widget.notificationController,
+          onViewTicket: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TicketHistoryScreen(
+                  profileController: widget.profileController,
+                  children: widget.profileController.isParent
+                      ? widget.profileController.linkedUsers
+                      : [],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Điều hướng tới màn hình Chatbot AI.
+  void _navigateToChatbot() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatbotScreen(
+          chatbotController: widget.chatbotController,
+        ),
+      ),
+    );
+  }
+
+  /// Điều hướng tới màn hình xin nghỉ.
+  void _navigateToLeaveRequest() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LeaveRequestScreen(
+          controller: widget.leaveRequestController,
+          profileController: widget.profileController,
+        ),
+      ),
     );
   }
 

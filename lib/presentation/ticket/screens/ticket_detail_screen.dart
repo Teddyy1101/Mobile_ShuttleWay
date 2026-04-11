@@ -9,10 +9,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/ticket_model.dart';
 
 /// Màn hình chi tiết vé xe dạng thẻ (card) với mã QR tự động refresh.
-///
-/// QR code chứa JSON `{"ticketId": "...", "timestamp": 1234567890}`
-/// và được tạo lại mỗi 30 giây. Backend sẽ kiểm tra nếu `timestamp`
-/// quá 2 phút so với thời gian hiện tại thì từ chối quét.
 class TicketDetailScreen extends StatefulWidget {
   final TicketModel ticket;
 

@@ -172,4 +172,26 @@ class TransactionApi {
       throw Exception('Lỗi không xác định khi kiểm tra trạng thái: $e');
     }
   }
+
+  /// Gọi API POST /transactions/:id/confirm-payment.
+  /// Xác nhận kết quả thanh toán từ mobile sau khi WebView trả về.
+  Future<void> confirmPayment({
+    required String transactionId,
+    String? responseCode,
+    String? resultCode,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (responseCode != null) body['responseCode'] = responseCode;
+      if (resultCode != null) body['resultCode'] = resultCode;
+
+      await _dioClient.dio.post(
+        '/transactions/$transactionId/confirm-payment',
+        data: body,
+      );
+    } catch (e) {
+      // Không throw — chỉ best-effort
+      rethrow;
+    }
+  }
 }

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/network/dio_client.dart';
+import '../../../core/network/fcm_service.dart';
+import '../../../core/network/notification_socket_service.dart';
+import '../../../data/models/notification_model.dart';
 import '../controllers/auth_controller.dart';
 import '../../home/controllers/parent_home_controller.dart';
 import '../../home/controllers/leave_request_controller.dart';
@@ -11,6 +15,8 @@ import '../../map/controllers/map_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../ticket/controllers/ticket_controller.dart';
 import '../../ticket/controllers/payment_controller.dart';
+import '../../notification/controllers/notification_controller.dart';
+import '../../home/controllers/chatbot_controller.dart';
 import '../widgets/login_form_widget.dart';
 import '../widgets/social_login_widget.dart';
 import 'register_screen.dart';
@@ -26,6 +32,11 @@ class LoginScreen extends StatefulWidget {
   final MapController mapController;
   final LeaveRequestController leaveRequestController;
   final ScheduleController scheduleController;
+  final NotificationController notificationController;
+  final ChatbotController chatbotController;
+  final FcmService fcmService;
+  final DioClient dioClient;
+  final NotificationSocketService notificationSocketService;
 
   const LoginScreen({
     super.key,
@@ -38,6 +49,11 @@ class LoginScreen extends StatefulWidget {
     required this.mapController,
     required this.leaveRequestController,
     required this.scheduleController,
+    required this.notificationController,
+    required this.chatbotController,
+    required this.fcmService,
+    required this.dioClient,
+    required this.notificationSocketService,
   });
 
   @override
@@ -78,6 +94,32 @@ class _LoginScreenState extends State<LoginScreen> {
         widget.parentHomeController.setProfileFromLogin(user);
         widget.profileController.setProfileFromLogin(user);
       }
+
+      // Đăng ký FCM token + kết nối notification socket (fire-and-forget)
+      widget.fcmService.registerToken(widget.dioClient).then((_) {
+        // Lắng nghe token refresh → gửi lại lên server
+        widget.fcmService.onTokenRefresh((newToken) {
+          widget.dioClient.dio.patch('/users/me', data: {'fcmToken': newToken});
+        });
+      });
+
+      // Kết nối Socket.IO notification + lắng nghe realtime
+      widget.notificationSocketService.connect().then((_) {
+        final userId = user?.id ?? '';
+        if (userId.isNotEmpty) {
+          widget.notificationSocketService.joinNotifications(userId);
+          widget.notificationSocketService.onNewNotification((data) {
+            final notification = NotificationModel.fromJson(data);
+            widget.notificationController.onNewNotificationReceived(notification);
+          });
+        }
+      });
+
+      // Lắng nghe FCM foreground → chèn vào controller
+      widget.fcmService.onForegroundMessage((title, body) {
+        widget.notificationController.loadNotifications(refresh: true);
+      });
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -91,6 +133,11 @@ class _LoginScreenState extends State<LoginScreen> {
             mapController: widget.mapController,
             leaveRequestController: widget.leaveRequestController,
             scheduleController: widget.scheduleController,
+            notificationController: widget.notificationController,
+            chatbotController: widget.chatbotController,
+            fcmService: widget.fcmService,
+            dioClient: widget.dioClient,
+            notificationSocketService: widget.notificationSocketService,
           ),
         ),
       );

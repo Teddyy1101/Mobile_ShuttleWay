@@ -174,7 +174,7 @@ class _ParentBookTicketScreenState extends State<ParentBookTicketScreen> {
           _buildSectionTitle('Chọn học sinh'),
           const SizedBox(height: AppConstants.paddingSM + 4),
           SizedBox(
-            height: 56,
+            height: 64,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: children.length,
@@ -840,18 +840,22 @@ class _ParentBookTicketScreenState extends State<ParentBookTicketScreen> {
           Padding(
             padding: const EdgeInsets.only(left: 28),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isDark
-                        ? AppColors.darkTextHint
-                        : AppColors.lightTextHint,
+                Flexible(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppColors.darkTextHint
+                          : AppColors.lightTextHint,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppConstants.paddingSM,
@@ -866,7 +870,7 @@ class _ParentBookTicketScreenState extends State<ParentBookTicketScreen> {
                   child: Text(
                     timeLabel,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: dotColor == theme.colorScheme.primary
                           ? FontWeight.bold
                           : FontWeight.w500,
@@ -876,6 +880,8 @@ class _ParentBookTicketScreenState extends State<ParentBookTicketScreen> {
                               ? AppColors.darkTextHint
                               : AppColors.lightTextHint),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -951,7 +957,7 @@ class _ParentBookTicketScreenState extends State<ParentBookTicketScreen> {
 
   Widget _buildDateSelector(ThemeData theme, bool isDark) {
     final now = DateTime.now();
-    final dates = List.generate(4, (i) => now.add(Duration(days: i)));
+    final dates = List.generate(3, (i) => now.add(Duration(days: i)));
     final dayLabels = ['Hôm nay', 'Ngày mai'];
 
     return Padding(
@@ -967,7 +973,7 @@ class _ParentBookTicketScreenState extends State<ParentBookTicketScreen> {
           _buildSectionTitle('Ngày khởi hành'),
           const SizedBox(height: AppConstants.paddingSM + 4),
           SizedBox(
-            height: 94,
+            height: 100,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: dates.length + 1,

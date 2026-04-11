@@ -102,14 +102,16 @@ class _NavItem extends StatelessWidget {
               size: AppConstants.iconSizeMD,
               color: isActive ? activeColor : inactiveColor,
             ),
-            const SizedBox(height: AppConstants.paddingXS),
+            const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                 color: isActive ? activeColor : inactiveColor,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

@@ -1189,6 +1189,18 @@ class PaymentScreen extends StatelessWidget {
       if (!context.mounted) return;
 
       if (result != null) {
+        // Xác nhận kết quả thanh toán với backend
+        // (cập nhật DB + kích hoạt vé + gửi thông báo)
+        final txnId = paymentController.transaction?.id;
+        if (txnId != null) {
+          await paymentController.confirmPayment(
+            transactionId: txnId,
+            responseCode: result.responseCode,
+          );
+        }
+
+        if (!context.mounted) return;
+
         // Nhận được kết quả từ WebView → hiển thị popup
         _showPaymentResultDialog(context, result);
       }

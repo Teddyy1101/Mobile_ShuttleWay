@@ -21,4 +21,11 @@ abstract class PaymentRepository {
   /// Kiểm tra trạng thái giao dịch (polling SePay).
   /// Trả về `PENDING`, `SUCCESS` hoặc `FAILED`.
   Future<String> checkTransactionStatus(String transactionId);
+
+  /// Xác nhận thanh toán từ mobile (sau khi WebView trả kết quả).
+  Future<void> confirmPayment({
+    required String transactionId,
+    String? responseCode,
+    String? resultCode,
+  });
 }

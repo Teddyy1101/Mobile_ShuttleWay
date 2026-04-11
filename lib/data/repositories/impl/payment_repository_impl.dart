@@ -35,4 +35,17 @@ class ApiPaymentRepository implements PaymentRepository {
   Future<String> checkTransactionStatus(String transactionId) async {
     return _transactionApi.checkTransactionStatus(transactionId);
   }
+
+  @override
+  Future<void> confirmPayment({
+    required String transactionId,
+    String? responseCode,
+    String? resultCode,
+  }) async {
+    return _transactionApi.confirmPayment(
+      transactionId: transactionId,
+      responseCode: responseCode,
+      resultCode: resultCode,
+    );
+  }
 }

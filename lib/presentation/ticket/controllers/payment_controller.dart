@@ -206,6 +206,25 @@ class PaymentController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Xác nhận thanh toán với backend sau khi WebView trả kết quả.
+  /// Gửi transactionId + responseCode/resultCode để backend cập nhật DB.
+  Future<void> confirmPayment({
+    required String transactionId,
+    String? responseCode,
+    String? resultCode,
+  }) async {
+    try {
+      await _paymentRepository.confirmPayment(
+        transactionId: transactionId,
+        responseCode: responseCode,
+        resultCode: resultCode,
+      );
+    } catch (e) {
+      // Không throw lỗi ra ngoài — chỉ log, vì popup đã hiện rồi
+      debugPrint('confirmPayment error: $e');
+    }
+  }
+
   /// Reset trạng thái cho lần thanh toán mới.
   void reset() {
     stopPolling();

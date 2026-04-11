@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/network/dio_client.dart';
+import '../../../core/network/fcm_service.dart';
+import '../../../core/network/notification_socket_service.dart';
 import '../controllers/profile_controller.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -12,6 +15,8 @@ import '../../home/controllers/parent_home_controller.dart';
 import '../../home/controllers/leave_request_controller.dart';
 import '../../home/controllers/schedule_controller.dart';
 import '../../map/controllers/map_controller.dart';
+import '../../notification/controllers/notification_controller.dart';
+import '../../home/controllers/chatbot_controller.dart';
 import 'edit_profile_screen.dart';
 import 'parent_management_screen.dart';
 import 'payment_history_screen.dart';
@@ -28,6 +33,11 @@ class StudentProfileScreen extends StatefulWidget {
   final MapController mapController;
   final LeaveRequestController leaveRequestController;
   final ScheduleController scheduleController;
+  final NotificationController notificationController;
+  final ChatbotController chatbotController;
+  final FcmService fcmService;
+  final DioClient dioClient;
+  final NotificationSocketService notificationSocketService;
 
   const StudentProfileScreen({
     super.key,
@@ -40,6 +50,11 @@ class StudentProfileScreen extends StatefulWidget {
     required this.mapController,
     required this.leaveRequestController,
     required this.scheduleController,
+    required this.notificationController,
+    required this.chatbotController,
+    required this.fcmService,
+    required this.dioClient,
+    required this.notificationSocketService,
   });
 
   @override
@@ -1216,6 +1231,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               mapController: widget.mapController,
               leaveRequestController: widget.leaveRequestController,
               scheduleController: widget.scheduleController,
+              notificationController: widget.notificationController,
+              chatbotController: widget.chatbotController,
+              fcmService: widget.fcmService,
+              dioClient: widget.dioClient,
+              notificationSocketService: widget.notificationSocketService,
             ),
           ),
           (route) => false,

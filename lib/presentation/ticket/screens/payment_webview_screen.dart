@@ -31,10 +31,6 @@ class PaymentWebViewResult {
 }
 
 /// Màn hình WebView tải URL thanh toán VNPay/MoMo.
-///
-/// Lắng nghe mọi URL redirect. Khi phát hiện URL chứa `vnpay/return`
-/// hoặc `momo/return`, chặn load và trả về [PaymentWebViewResult]
-/// qua `Navigator.pop`.
 class PaymentWebViewScreen extends StatefulWidget {
   /// URL thanh toán lấy từ backend (VNPay hoặc MoMo).
   final String paymentUrl;
@@ -78,18 +74,17 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
             final url = request.url;
 
             // Chặn các URL scheme không phải HTTP/HTTPS
-            // (market://, intent://, vd: MoMo cố mở CH Play)
             if (!url.startsWith('http://') && !url.startsWith('https://')) {
               return NavigationDecision.prevent;
             }
 
-            // Chặn redirect VNPay return
+            // Chặn redirect VNPay return → parse kết quả
             if (url.contains('vnpay/return')) {
               _handleVnPayReturn(url);
               return NavigationDecision.prevent;
             }
 
-            // Chặn redirect MoMo return
+            // Chặn redirect MoMo return → parse kết quả
             if (url.contains('momo/return')) {
               _handleMoMoReturn(url);
               return NavigationDecision.prevent;
@@ -102,8 +97,13 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
       ..loadRequest(Uri.parse(widget.paymentUrl));
   }
 
+  bool _hasResult = false;
+
   /// Parse query params từ URL redirect VNPay và trả kết quả về cho caller.
   void _handleVnPayReturn(String url) {
+    if (_hasResult) return;
+    _hasResult = true;
+
     final uri = Uri.parse(url);
     final responseCode = uri.queryParameters['vnp_ResponseCode'];
     final txnRef = uri.queryParameters['vnp_TxnRef'];
@@ -125,6 +125,9 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
   /// - `resultCode`: `0` = thành công, khác `0` = thất bại
   /// - `orderId`: mã đơn hàng (format: transactionId-timestamp)
   void _handleMoMoReturn(String url) {
+    if (_hasResult) return;
+    _hasResult = true;
+
     final uri = Uri.parse(url);
     final resultCode = uri.queryParameters['resultCode'];
     final orderId = uri.queryParameters['orderId'];

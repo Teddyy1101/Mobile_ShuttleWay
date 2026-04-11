@@ -8,17 +8,23 @@ import '../controllers/schedule_controller.dart';
 import 'leave_request_screen.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../controllers/leave_request_controller.dart';
+import '../widgets/route_detail_bottom_sheet.dart';
+import '../../notification/controllers/notification_controller.dart';
+import '../../notification/screens/notification_screen.dart';
+import 'ticket_history_screen.dart';
 
 class ScheduleScreen extends StatefulWidget {
   final ScheduleController scheduleController;
   final ProfileController profileController;
   final LeaveRequestController leaveRequestController;
+  final NotificationController notificationController;
 
   const ScheduleScreen({
     super.key,
     required this.scheduleController,
     required this.profileController,
     required this.leaveRequestController,
+    required this.notificationController,
   });
 
   @override
@@ -172,48 +178,75 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          // Chỉ icon chuông — giống trang chủ
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                ),
-                child: IconButton(
-                  onPressed: () {
-                    // TODO: Navigate to notifications
-                  },
-                  icon: Icon(
-                    Icons.notifications_none_rounded,
-                    size: AppConstants.iconSizeSM,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                  padding: EdgeInsets.zero,
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 10,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: AppColors.error,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isDark
-                          ? AppColors.darkBackground
-                          : AppColors.lightBackground,
-                      width: 1.5,
+          // Icon chuông với badge động
+          ListenableBuilder(
+            listenable: widget.notificationController,
+            builder: (context, _) {
+              final hasUnread = widget.notificationController.unreadCount > 0;
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    ),
+                    child: IconButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => NotificationScreen(
+                              controller: widget.notificationController,
+                              onViewTicket: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => TicketHistoryScreen(
+                                      profileController: widget.profileController,
+                                      children: widget.profileController.isParent
+                                          ? widget.profileController.linkedUsers
+                                          : [],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                      icon: Icon(
+                        Icons.notifications_none_rounded,
+                        size: AppConstants.iconSizeSM,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      padding: EdgeInsets.zero,
                     ),
                   ),
-                ),
-              ),
-            ],
+                  if (hasUnread)
+                    Positioned(
+                      top: 8,
+                      right: 10,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.darkBackground
+                                : AppColors.lightBackground,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -775,9 +808,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 decoration: BoxDecoration(
                   color: isCompleted
                       ? AppColors.success
-                      : isInProgress
-                          ? theme.colorScheme.primary
-                          : AppColors.warning,
+                      : theme.colorScheme.primary,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: theme.scaffoldBackgroundColor,
@@ -787,9 +818,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ? []
                       : [
                           BoxShadow(
-                            color: (isInProgress
-                                    ? theme.colorScheme.primary
-                                    : AppColors.warning)
+                            color: theme.colorScheme.primary
                                 .withValues(alpha: 0.3),
                             blurRadius: 8,
                             spreadRadius: 1,
@@ -816,10 +845,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         ? (isDark
                             ? Colors.white.withValues(alpha: 0.05)
                             : Colors.grey[100]!)
-                        : (isInProgress
-                            ? theme.colorScheme.primary
-                                .withValues(alpha: 0.2)
-                            : AppColors.warning.withValues(alpha: 0.2)),
+                        : theme.colorScheme.primary
+                            .withValues(alpha: 0.2),
                     width: isCompleted ? 1 : 1.5,
                   ),
                   boxShadow: [
@@ -843,9 +870,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           bottom: 0,
                           child: Container(
                             width: 4,
-                            color: isInProgress
-                                ? theme.colorScheme.primary
-                                : AppColors.warning,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
                       Padding(
@@ -955,7 +980,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                                           .withValues(alpha: 0.1),
                                       theme.colorScheme.primary,
                                       () {
-                                        // TODO: Lộ trình detail
+                                        _showRouteDetailDialog(context, trip);
                                       },
                                     ),
                                   ),
@@ -993,6 +1018,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   // ─── Helpers ─────────────────────────────────────────────────
 
+  void _showRouteDetailDialog(BuildContext context, TripModel trip) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => RouteDetailBottomSheet(trip: trip),
+    );
+  }
+
   Widget _buildStatusBadge(String status, ThemeData theme) {
     String label;
     Color color;
@@ -1002,26 +1036,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         label = 'ĐÃ HOÀN THÀNH';
         color = AppColors.success;
         break;
-      case 'IN_PROGRESS':
-        label = 'ĐANG CHẠY';
-        color = theme.colorScheme.primary;
-        break;
-      case 'BOARDED':
-        label = 'ĐÃ LÊN XE';
-        color = AppColors.primary;
-        break;
-      case 'ALIGHTED':
-        label = 'ĐÃ XUỐNG';
-        color = AppColors.success;
-        break;
-      case 'ABSENT':
-        label = 'VẮNG MẶT';
-        color = AppColors.error;
-        break;
-      case 'PENDING':
       default:
         label = 'SẮP TỚI';
-        color = AppColors.warning;
+        color = theme.colorScheme.primary;
         break;
     }
 
