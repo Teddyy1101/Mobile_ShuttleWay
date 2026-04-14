@@ -4,8 +4,7 @@ import '../../../core/theme/app_colors.dart';
 /// Trạng thái của trạm trên tuyến.
 enum StationState { passed, current, upcoming }
 
-/// Widget marker trạm dừng trên bản đồ.
-/// Hiển thị icon + tên trạm dưới dạng chip nhỏ.
+/// Widget marker trạm dừng trên bản đồ — hình tròn có STT, kèm tên trạm.
 class StationMarkerWidget extends StatelessWidget {
   final String name;
   final int index;
@@ -20,86 +19,97 @@ class StationMarkerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final Color dotColor;
-    final Color bgColor;
-    final Color textColor;
-    final double dotSize;
+    final Color circleColor;
+    final Color borderColor;
+    final Color labelBgColor;
+    final Color labelTextColor;
+    final Widget centerContent;
 
     switch (state) {
       case StationState.passed:
-        dotColor = AppColors.success;
-        bgColor = AppColors.success.withValues(alpha: 0.15);
-        textColor = AppColors.success;
-        dotSize = 10;
+        circleColor = AppColors.success;
+        borderColor = Colors.white;
+        labelBgColor = AppColors.success.withValues(alpha: 0.15);
+        labelTextColor = AppColors.success;
+        centerContent = const Icon(
+          Icons.check,
+          color: Colors.white,
+          size: 14,
+        );
         break;
       case StationState.current:
-        dotColor = colorScheme.primary;
-        bgColor = colorScheme.primary.withValues(alpha: 0.15);
-        textColor = colorScheme.primary;
-        dotSize = 14;
+        circleColor = const Color(0xFF4285F4);
+        borderColor = Colors.white;
+        labelBgColor = const Color(0xFF4285F4).withValues(alpha: 0.15);
+        labelTextColor = const Color(0xFF4285F4);
+        centerContent = Text(
+          '${index + 1}',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        );
         break;
       case StationState.upcoming:
-        dotColor = isDark ? Colors.grey[500]! : Colors.grey[400]!;
-        bgColor = isDark
-            ? Colors.grey[800]!.withValues(alpha: 0.6)
-            : Colors.grey[200]!.withValues(alpha: 0.8);
-        textColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
-        dotSize = 8;
+        circleColor = const Color(0xFFEA4335);
+        borderColor = Colors.white;
+        labelBgColor = const Color(0xFFEA4335).withValues(alpha: 0.12);
+        labelTextColor = const Color(0xFFEA4335);
+        centerContent = Text(
+          '${index + 1}',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        );
         break;
     }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Dot marker
+        // Vòng tròn marker
         Container(
-          width: dotSize + 8,
-          height: dotSize + 8,
+          width: 30,
+          height: 30,
           decoration: BoxDecoration(
+            color: circleColor,
             shape: BoxShape.circle,
-            color: bgColor,
-            border: state == StationState.current
-                ? Border.all(color: dotColor, width: 2)
-                : null,
-          ),
-          child: Center(
-            child: Container(
-              width: dotSize,
-              height: dotSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: dotColor,
-                boxShadow: state == StationState.current
-                    ? [
-                        BoxShadow(
-                          color: dotColor.withValues(alpha: 0.4),
-                          blurRadius: 6,
-                          spreadRadius: 2,
-                        ),
-                      ]
-                    : null,
+            border: Border.all(color: borderColor, width: 2.5),
+            boxShadow: [
+              BoxShadow(
+                color: circleColor.withValues(alpha: 0.4),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-            ),
+            ],
           ),
+          child: Center(child: centerContent),
         ),
-        const SizedBox(height: 2),
-        // Station name chip
+        const SizedBox(height: 3),
+        // Tên trạm chip
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
           decoration: BoxDecoration(
-            color: bgColor,
+            color: labelBgColor,
             borderRadius: BorderRadius.circular(4),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 2,
+              ),
+            ],
           ),
           child: Text(
-            name.length > 12 ? '${name.substring(0, 12)}…' : name,
+            name.length > 14 ? '${name.substring(0, 14)}…' : name,
             style: TextStyle(
-              fontSize: 8,
-              fontWeight:
-                  state == StationState.current ? FontWeight.w700 : FontWeight.w500,
-              color: textColor,
+              fontSize: 9,
+              fontWeight: state == StationState.current
+                  ? FontWeight.w700
+                  : FontWeight.w600,
+              color: labelTextColor,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

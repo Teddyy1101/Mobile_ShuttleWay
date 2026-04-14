@@ -973,7 +973,7 @@ class _ParentBookTicketScreenState extends State<ParentBookTicketScreen> {
           _buildSectionTitle('Ngày khởi hành'),
           const SizedBox(height: AppConstants.paddingSM + 4),
           SizedBox(
-            height: 100,
+            height: 115,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: dates.length + 1,
@@ -1328,9 +1328,8 @@ class _ParentBookTicketScreenState extends State<ParentBookTicketScreen> {
                   spacing: AppConstants.paddingMD,
                   runSpacing: AppConstants.paddingSM,
                   children: [
-                    _buildInfoChip(
-                      icon: Icons.directions_bus_outlined,
-                      text: selectedRoute.routeCode,
+                    _buildRouteCodeBadge(
+                      routeCode: selectedRoute.routeCode,
                       theme: theme,
                       isDark: isDark,
                     ),
@@ -1451,6 +1450,43 @@ class _ParentBookTicketScreenState extends State<ParentBookTicketScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Badge mã tuyến nổi bật — route code nằm giữa ô vuông.
+  Widget _buildRouteCodeBadge({
+    required String routeCode,
+    required ThemeData theme,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withAlpha(20),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: theme.colorScheme.primary.withAlpha(60),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.directions_bus_filled_rounded,
+            size: 15,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            routeCode,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -1,6 +1,5 @@
 import '../models/notification_model.dart';
 
-/// Interface (Abstract class) cho Notification Repository.
 abstract class NotificationRepository {
   /// Lấy danh sách thông báo (phân trang).
   Future<({List<NotificationModel> notifications, int total, int totalPages})>
@@ -11,4 +10,7 @@ abstract class NotificationRepository {
 
   /// Đánh dấu tất cả thông báo đã đọc.
   Future<void> markAllAsRead();
+
+  /// Xóa tất cả thông báo.
+  Future<void> deleteAll();
 }

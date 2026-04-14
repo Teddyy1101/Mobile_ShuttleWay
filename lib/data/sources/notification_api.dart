@@ -84,4 +84,23 @@ class NotificationApi {
       throw Exception('Lỗi không xác định khi đánh dấu tất cả đã đọc: $e');
     }
   }
+
+  /// DELETE /notifications/delete-all.
+  Future<void> deleteAll() async {
+    try {
+      final response = await _dioClient.dio.delete('/notifications/delete-all');
+
+      if (response.statusCode == 200) return;
+
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        message: 'Xóa tất cả thông báo thất bại',
+      );
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Lỗi không xác định khi xóa tất cả thông báo: $e');
+    }
+  }
 }

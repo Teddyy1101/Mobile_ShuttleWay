@@ -146,32 +146,93 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ListenableBuilder(
             listenable: widget.controller,
             builder: (context, _) {
-              if (widget.controller.unreadCount == 0) {
+              if (widget.controller.notifications.isEmpty) {
                 return const SizedBox.shrink();
               }
-              return GestureDetector(
-                onTap: widget.controller.markAllAsRead,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppConstants.paddingSM,
-                    vertical: AppConstants.paddingXS,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusSM),
-                    color: colorScheme.primary.withValues(alpha: 0.1),
-                  ),
-                  child: Text(
-                    'Đánh dấu đã đọc',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.primary,
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Nút đánh dấu tất cả đã đọc
+                  if (widget.controller.unreadCount > 0)
+                    GestureDetector(
+                      onTap: widget.controller.markAllAsRead,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppConstants.paddingSM,
+                          vertical: AppConstants.paddingXS,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.radiusSM),
+                          color: colorScheme.primary.withValues(alpha: 0.1),
+                        ),
+                        child: Text(
+                          'Đã đọc',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 6),
+                  // Nút xóa tất cả
+                  GestureDetector(
+                    onTap: () => _confirmDeleteAll(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.paddingSM,
+                        vertical: AppConstants.paddingXS,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(AppConstants.radiusSM),
+                        color: AppColors.error.withValues(alpha: 0.1),
+                      ),
+                      child: const Text(
+                        'Xóa tất cả',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.error,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Xác nhận trước khi xóa tất cả thông báo.
+  void _confirmDeleteAll(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xóa tất cả thông báo?'),
+        content: const Text(
+          'Tất cả thông báo sẽ bị xóa vĩnh viễn. Bạn có chắc chắn?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              widget.controller.deleteAll();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Xóa'),
           ),
         ],
       ),

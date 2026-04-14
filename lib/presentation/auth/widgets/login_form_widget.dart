@@ -7,6 +7,7 @@ class LoginFormWidget extends StatelessWidget {
   final TextEditingController passwordController;
   final bool obscurePassword;
   final VoidCallback onTogglePassword;
+  final VoidCallback? onForgotPassword;
   final GlobalKey<FormState> formKey;
 
   const LoginFormWidget({
@@ -15,6 +16,7 @@ class LoginFormWidget extends StatelessWidget {
     required this.passwordController,
     required this.obscurePassword,
     required this.onTogglePassword,
+    this.onForgotPassword,
     required this.formKey,
   });
 
@@ -98,9 +100,7 @@ class LoginFormWidget extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {
-                // TODO: Navigate to forgot password
-              },
+              onPressed: onForgotPassword,
               child: Text(
                 'Quên mật khẩu?',
                 style: TextStyle(

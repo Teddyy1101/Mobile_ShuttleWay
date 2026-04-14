@@ -4,8 +4,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/notification_model.dart';
 import 'package:intl/intl.dart';
 
-/// Widget hiển thị một thẻ thông báo.
-/// Tái sử dụng cho mỗi item trong danh sách thông báo.
 class NotificationCardWidget extends StatefulWidget {
   final NotificationModel notification;
   final VoidCallback? onTap;
@@ -202,9 +200,19 @@ class _NotificationCardWidgetState extends State<NotificationCardWidget> {
   /// Phân loại thông báo dựa trên title để chọn icon + màu.
   _NotifCategory _getCategory(String title) {
     final lower = title.toLowerCase();
+
+    // ─── Trip lifecycle (driver) ───
+    if (lower.contains('đến trạm') || lower.contains('station')) {
+      return _NotifCategory(Icons.location_on_rounded, AppColors.notifBus);
+    }
+    if (lower.contains('hoàn thành') || lower.contains('kết thúc')) {
+      return _NotifCategory(Icons.flag_rounded, AppColors.notifSuccess);
+    }
+
     if (lower.contains('xe buýt') ||
         lower.contains('xe sắp') ||
-        lower.contains('khởi hành')) {
+        lower.contains('khởi hành') ||
+        lower.contains('bắt đầu')) {
       return _NotifCategory(Icons.directions_bus_rounded, AppColors.notifBus);
     }
     if (lower.contains('điểm danh') ||
@@ -232,6 +240,9 @@ class _NotificationCardWidgetState extends State<NotificationCardWidget> {
     }
     if (lower.contains('thanh toán') || lower.contains('giao dịch')) {
       return _NotifCategory(Icons.payment_rounded, AppColors.notifFeedback);
+    }
+    if (lower.contains('nghỉ phép') || lower.contains('xin nghỉ')) {
+      return _NotifCategory(Icons.event_busy_rounded, AppColors.notifFeedback);
     }
     return _NotifCategory(Icons.notifications_rounded, AppColors.notifBus);
   }

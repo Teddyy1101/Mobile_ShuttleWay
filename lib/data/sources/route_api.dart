@@ -8,8 +8,6 @@ class RouteApi {
 
   RouteApi(this._dioClient);
 
-  /// Gọi API GET /routes.
-  /// Trả về danh sách [RouteModel] nếu thành công.
   Future<List<RouteModel>> getRoutes({
     String? shiftType,
     bool? isActive,

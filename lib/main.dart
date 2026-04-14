@@ -17,6 +17,7 @@ import 'data/sources/route_api.dart';
 import 'data/sources/trip_api.dart';
 import 'data/sources/notification_api.dart';
 import 'data/sources/chatbot_api.dart';
+import 'data/sources/driver_trip_api.dart';
 import 'data/repositories/impl/auth_repository_impl.dart';
 import 'data/repositories/impl/parent_repository_impl.dart';
 import 'data/repositories/impl/profile_repository_impl.dart';
@@ -27,15 +28,18 @@ import 'data/repositories/impl/trip_repository_impl.dart';
 import 'data/repositories/impl/api_leave_request_repository.dart';
 import 'data/repositories/impl/notification_repository_impl.dart';
 import 'data/repositories/impl/chatbot_repository_impl.dart';
+import 'data/repositories/impl/api_driver_trip_repository.dart';
 import 'presentation/auth/controllers/auth_controller.dart';
 import 'presentation/auth/screens/login_screen.dart';
 import 'presentation/home/controllers/parent_home_controller.dart';
+import 'presentation/home/controllers/driver_home_controller.dart';
 import 'presentation/map/controllers/map_controller.dart';
 import 'presentation/profile/controllers/profile_controller.dart';
 import 'presentation/ticket/controllers/ticket_controller.dart';
 import 'presentation/ticket/controllers/payment_controller.dart';
 import 'presentation/home/controllers/leave_request_controller.dart';
 import 'presentation/home/controllers/schedule_controller.dart';
+import 'presentation/home/controllers/driver_schedule_controller.dart';
 import 'presentation/notification/controllers/notification_controller.dart';
 import 'presentation/home/controllers/chatbot_controller.dart';
 
@@ -98,10 +102,19 @@ void main() async {
   final chatbotRepository = ApiChatbotRepository(chatbotApi);
   final chatbotController = ChatbotController(chatbotRepository);
 
+  // ─── Driver ──
+  final driverTripApi = DriverTripApi(dioClient);
+  final driverTripRepository = ApiDriverTripRepository(driverTripApi);
+  final driverHomeController = DriverHomeController(driverTripRepository);
+  final driverScheduleController = DriverScheduleController(
+    driverTripRepository: driverTripRepository,
+  );
+
   runApp(SafeWheelsApp(
     themeController: themeController,
     authController: authController,
     parentHomeController: parentHomeController,
+    driverHomeController: driverHomeController,
     profileController: profileController,
     ticketController: ticketController,
     paymentController: paymentController,
@@ -110,9 +123,11 @@ void main() async {
     scheduleController: scheduleController,
     notificationController: notificationController,
     chatbotController: chatbotController,
+    driverScheduleController: driverScheduleController,
     fcmService: fcmService,
     dioClient: dioClient,
     notificationSocketService: notificationSocketService,
+    socketService: socketService,
   ));
 }
 
@@ -121,6 +136,8 @@ class SafeWheelsApp extends StatefulWidget {
   final ThemeController themeController;
   final AuthController authController;
   final ParentHomeController parentHomeController;
+  final DriverHomeController driverHomeController;
+  final DriverScheduleController driverScheduleController;
   final ProfileController profileController;
   final TicketController ticketController;
   final PaymentController paymentController;
@@ -132,23 +149,27 @@ class SafeWheelsApp extends StatefulWidget {
   final FcmService fcmService;
   final DioClient dioClient;
   final NotificationSocketService notificationSocketService;
+  final SocketService socketService;
 
   const SafeWheelsApp({
     super.key,
     required this.themeController,
     required this.authController,
     required this.parentHomeController,
+    required this.driverHomeController,
     required this.profileController,
     required this.ticketController,
     required this.paymentController,
     required this.mapController,
     required this.leaveRequestController,
     required this.scheduleController,
+    required this.driverScheduleController,
     required this.notificationController,
     required this.chatbotController,
     required this.fcmService,
     required this.dioClient,
     required this.notificationSocketService,
+    required this.socketService,
   });
 
   @override
@@ -181,6 +202,7 @@ class _SafeWheelsAppState extends State<SafeWheelsApp> {
       home: LoginScreen(
         authController: widget.authController,
         parentHomeController: widget.parentHomeController,
+        driverHomeController: widget.driverHomeController,
         profileController: widget.profileController,
         themeController: widget.themeController,
         ticketController: widget.ticketController,
@@ -188,11 +210,13 @@ class _SafeWheelsAppState extends State<SafeWheelsApp> {
         mapController: widget.mapController,
         leaveRequestController: widget.leaveRequestController,
         scheduleController: widget.scheduleController,
+        driverScheduleController: widget.driverScheduleController,
         notificationController: widget.notificationController,
         chatbotController: widget.chatbotController,
         fcmService: widget.fcmService,
         dioClient: widget.dioClient,
         notificationSocketService: widget.notificationSocketService,
+        socketService: widget.socketService,
       ),
     );
   }

@@ -31,4 +31,9 @@ class ApiNotificationRepository implements NotificationRepository {
   Future<void> markAllAsRead() {
     return _remoteSource.markAllAsRead();
   }
+
+  @override
+  Future<void> deleteAll() {
+    return _remoteSource.deleteAll();
+  }
 }

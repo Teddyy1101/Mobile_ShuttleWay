@@ -4,14 +4,17 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/fcm_service.dart';
+import '../../../core/network/socket_service.dart';
 import '../../../core/network/notification_socket_service.dart';
 import '../controllers/profile_controller.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../data/models/child_model.dart';
 import '../../home/controllers/parent_home_controller.dart';
+import '../../home/controllers/driver_home_controller.dart';
 import '../../home/controllers/leave_request_controller.dart';
 import '../../home/controllers/schedule_controller.dart';
+import '../../home/controllers/driver_schedule_controller.dart';
 import '../../map/controllers/map_controller.dart';
 import '../../ticket/controllers/ticket_controller.dart';
 import '../../ticket/controllers/payment_controller.dart';
@@ -20,22 +23,28 @@ import '../../home/controllers/chatbot_controller.dart';
 import 'edit_profile_screen.dart';
 import 'payment_history_screen.dart';
 import 'student_management_screen.dart';
+import '../../support/screens/support_screen.dart';
+import '../../support/controllers/support_controller.dart';
+import '../../../data/sources/support_ticket_api.dart';
+import '../../../data/repositories/impl/api_support_repository.dart';
 
-/// Màn hình Cá nhân dành cho phụ huynh.
 class ParentProfileScreen extends StatefulWidget {
   final ProfileController controller;
   final AuthController authController;
   final ParentHomeController parentHomeController;
+  final DriverHomeController driverHomeController;
   final ThemeController themeController;
   final TicketController ticketController;
   final PaymentController paymentController;
   final MapController mapController;
   final LeaveRequestController leaveRequestController;
   final ScheduleController scheduleController;
+  final DriverScheduleController driverScheduleController;
   final NotificationController notificationController;
   final ChatbotController chatbotController;
   final FcmService fcmService;
   final DioClient dioClient;
+  final SocketService socketService;
   final NotificationSocketService notificationSocketService;
 
   const ParentProfileScreen({
@@ -43,16 +52,19 @@ class ParentProfileScreen extends StatefulWidget {
     required this.controller,
     required this.authController,
     required this.parentHomeController,
+    required this.driverHomeController,
     required this.themeController,
     required this.ticketController,
     required this.paymentController,
     required this.mapController,
     required this.leaveRequestController,
     required this.scheduleController,
+    required this.driverScheduleController,
     required this.notificationController,
     required this.chatbotController,
     required this.fcmService,
     required this.dioClient,
+    required this.socketService,
     required this.notificationSocketService,
   });
 
@@ -545,6 +557,17 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
                     );
                   },
                 ),
+                _buildSettingRow(
+                  theme: theme,
+                  isDark: isDark,
+                  icon: Icons.support_agent_rounded,
+                  iconBgColor: Colors.teal.withValues(alpha: 0.1),
+                  iconColor: Colors.teal[600]!,
+                  label: 'Hỗ trợ',
+                  showDivider: true,
+                  borderColor: borderColor,
+                  onTap: () => _openSupportScreen(),
+                ),
                 // ── Toggle Dark / Light ──
                 ListenableBuilder(
                   listenable: widget.themeController,
@@ -876,6 +899,35 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
             color: isDark ? Colors.grey[800]!.withValues(alpha: 0.5) : Colors.grey[200],
           ),
       ],
+    );
+  }
+
+  // ─── Support ────────────────────────────────────────────
+
+  void _openSupportScreen() {
+    final userId = widget.controller.profile?.id;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa tải được thông tin tài khoản'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final api = SupportTicketApi(widget.dioClient);
+    final repo = ApiSupportRepository(api);
+    final controller = SupportController(repo);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SupportScreen(
+          controller: controller,
+          userId: userId,
+        ),
+      ),
     );
   }
 
@@ -1284,6 +1336,7 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
             builder: (_) => LoginScreen(
               authController: widget.authController,
               parentHomeController: widget.parentHomeController,
+              driverHomeController: widget.driverHomeController,
               profileController: widget.controller,
               themeController: widget.themeController,
               ticketController: widget.ticketController,
@@ -1291,10 +1344,12 @@ class _ParentProfileScreenState extends State<ParentProfileScreen> {
               mapController: widget.mapController,
               leaveRequestController: widget.leaveRequestController,
               scheduleController: widget.scheduleController,
+              driverScheduleController: widget.driverScheduleController,
               notificationController: widget.notificationController,
               chatbotController: widget.chatbotController,
               fcmService: widget.fcmService,
               dioClient: widget.dioClient,
+              socketService: widget.socketService,
               notificationSocketService: widget.notificationSocketService,
             ),
           ),

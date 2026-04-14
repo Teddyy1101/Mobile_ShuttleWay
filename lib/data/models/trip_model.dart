@@ -1,4 +1,3 @@
-/// Model thông tin xe buýt trong chuyến đi.
 class TripBusModel {
   final String id;
   final String licensePlate;
@@ -66,6 +65,9 @@ class TripModel {
   final TripBusModel? bus;
   final TripDriverModel? driver;
 
+  /// Số học sinh được gắn vào chuyến (từ `_count.attendances`).
+  final int attendanceCount;
+
   /// Trạng thái điểm danh cá nhân (PENDING / BOARDED / ALIGHTED / ABSENT).
   /// Chỉ có khi gọi từ API my-schedule.
   final String? attendanceStatus;
@@ -86,6 +88,7 @@ class TripModel {
     this.route,
     this.bus,
     this.driver,
+    this.attendanceCount = 0,
     this.attendanceStatus,
     this.boardedAt,
     this.alightedAt,
@@ -95,6 +98,10 @@ class TripModel {
   bool get isDropOff => direction == 'DROP_OFF';
 
   factory TripModel.fromJson(Map<String, dynamic> json) {
+    // Parse _count.attendances từ Prisma include
+    final countMap = json['_count'] as Map<String, dynamic>?;
+    final attendances = countMap?['attendances'] as int? ?? 0;
+
     return TripModel(
       id: json['id'] as String? ?? '',
       routeId: json['routeId'] as String? ?? '',
@@ -121,6 +128,7 @@ class TripModel {
       driver: json['driver'] != null
           ? TripDriverModel.fromJson(json['driver'] as Map<String, dynamic>)
           : null,
+      attendanceCount: attendances,
       attendanceStatus: json['attendanceStatus'] as String?,
       boardedAt: json['boardedAt'] != null
           ? DateTime.tryParse(json['boardedAt'] as String)
@@ -142,6 +150,11 @@ class TripRouteModel {
   final double? totalDistance;
   final int? totalDuration;
   final String? encodedPolyline;
+
+  /// Giờ xuất phát lý thuyết (từ bảng Route.estimatedTime).
+  /// Prisma trả về dạng ISO string, chỉ cần phần giờ:phút.
+  final DateTime? estimatedTime;
+
   final List<TripRouteStationModel> stations;
 
   const TripRouteModel({
@@ -152,6 +165,7 @@ class TripRouteModel {
     this.totalDistance,
     this.totalDuration,
     this.encodedPolyline,
+    this.estimatedTime,
     this.stations = const [],
   });
 
@@ -165,6 +179,9 @@ class TripRouteModel {
       totalDistance: (json['totalDistance'] as num?)?.toDouble(),
       totalDuration: json['totalDuration'] as int?,
       encodedPolyline: json['encodedPolyline'] as String?,
+      estimatedTime: json['estimatedTime'] != null
+          ? DateTime.tryParse(json['estimatedTime'] as String)
+          : null,
       stations: stationsList
           .map((e) =>
               TripRouteStationModel.fromJson(e as Map<String, dynamic>))

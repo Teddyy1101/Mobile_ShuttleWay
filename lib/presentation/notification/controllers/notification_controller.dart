@@ -166,6 +166,24 @@ class NotificationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Xóa tất cả thông báo.
+  Future<void> deleteAll() async {
+    // Optimistic update
+    final backup = List<NotificationModel>.from(_notifications);
+    _notifications.clear();
+    _unreadCount = 0;
+    notifyListeners();
+
+    try {
+      await _repository.deleteAll();
+    } catch (e) {
+      // Rollback nếu lỗi
+      _notifications = backup;
+      _recalculateUnreadCount();
+      notifyListeners();
+    }
+  }
+
   // ─── Private Helpers ──────────────────────────────────
 
   void _recalculateUnreadCount() {

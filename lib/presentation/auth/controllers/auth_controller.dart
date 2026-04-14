@@ -133,10 +133,47 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Quên mật khẩu — gửi email chứa mật khẩu mới.
+  Future<bool> forgotPassword(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _dioClient.dio.post(
+        '/auth/forgot-password',
+        data: {'email': email},
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      final data = response.data;
+      if (data is Map<String, dynamic> && data.containsKey('message')) {
+        return true;
+      }
+      return true;
+    } on DioException catch (e) {
+      _isLoading = false;
+      final data = e.response?.data;
+      if (data is Map<String, dynamic> && data.containsKey('message')) {
+        _errorMessage = data['message']?.toString() ?? 'Đã xảy ra lỗi';
+      } else {
+        _errorMessage = 'Không thể kết nối đến server. Vui lòng thử lại';
+      }
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Đã xảy ra lỗi không xác định';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Xóa thông báo lỗi.
   void clearError() {
     _errorMessage = null;
     notifyListeners();
   }
 }
-

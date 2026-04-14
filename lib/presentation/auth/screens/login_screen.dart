@@ -4,13 +4,17 @@ import '../../../core/utils/app_toast.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/fcm_service.dart';
+import '../../../core/network/socket_service.dart';
 import '../../../core/network/notification_socket_service.dart';
 import '../../../data/models/notification_model.dart';
 import '../controllers/auth_controller.dart';
 import '../../home/controllers/parent_home_controller.dart';
+import '../../home/controllers/driver_home_controller.dart';
 import '../../home/controllers/leave_request_controller.dart';
 import '../../home/controllers/schedule_controller.dart';
+import '../../home/controllers/driver_schedule_controller.dart';
 import '../../home/screens/parent_home_screen.dart';
+import '../../home/screens/driver_home_screen.dart';
 import '../../map/controllers/map_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../ticket/controllers/ticket_controller.dart';
@@ -20,11 +24,13 @@ import '../../home/controllers/chatbot_controller.dart';
 import '../widgets/login_form_widget.dart';
 import '../widgets/social_login_widget.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 
 /// Màn hình đăng nhập chính của ứng dụng SafeWheels.
 class LoginScreen extends StatefulWidget {
   final AuthController authController;
   final ParentHomeController parentHomeController;
+  final DriverHomeController driverHomeController;
   final ProfileController profileController;
   final ThemeController themeController;
   final TicketController ticketController;
@@ -32,16 +38,19 @@ class LoginScreen extends StatefulWidget {
   final MapController mapController;
   final LeaveRequestController leaveRequestController;
   final ScheduleController scheduleController;
+  final DriverScheduleController driverScheduleController;
   final NotificationController notificationController;
   final ChatbotController chatbotController;
   final FcmService fcmService;
   final DioClient dioClient;
+  final SocketService socketService;
   final NotificationSocketService notificationSocketService;
 
   const LoginScreen({
     super.key,
     required this.authController,
     required this.parentHomeController,
+    required this.driverHomeController,
     required this.profileController,
     required this.themeController,
     required this.ticketController,
@@ -49,10 +58,12 @@ class LoginScreen extends StatefulWidget {
     required this.mapController,
     required this.leaveRequestController,
     required this.scheduleController,
+    required this.driverScheduleController,
     required this.notificationController,
     required this.chatbotController,
     required this.fcmService,
     required this.dioClient,
+    required this.socketService,
     required this.notificationSocketService,
   });
 
@@ -93,6 +104,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user != null) {
         widget.parentHomeController.setProfileFromLogin(user);
         widget.profileController.setProfileFromLogin(user);
+        // Gán profile cho driver controller nếu role DRIVER
+        if (user.role == 'DRIVER') {
+          widget.driverHomeController.setProfileFromLogin(user);
+        }
       }
 
       // Đăng ký FCM token + kết nối notification socket (fire-and-forget)
@@ -120,25 +135,51 @@ class _LoginScreenState extends State<LoginScreen> {
         widget.notificationController.loadNotifications(refresh: true);
       });
 
+      // Chuyển hướng theo role
+      final isDriver = user?.role == 'DRIVER';
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => ParentHomeScreen(
-            controller: widget.parentHomeController,
-            profileController: widget.profileController,
-            authController: widget.authController,
-            themeController: widget.themeController,
-            ticketController: widget.ticketController,
-            paymentController: widget.paymentController,
-            mapController: widget.mapController,
-            leaveRequestController: widget.leaveRequestController,
-            scheduleController: widget.scheduleController,
-            notificationController: widget.notificationController,
-            chatbotController: widget.chatbotController,
-            fcmService: widget.fcmService,
-            dioClient: widget.dioClient,
-            notificationSocketService: widget.notificationSocketService,
-          ),
+          builder: (_) => isDriver
+              ? DriverHomeScreen(
+                  driverHomeController: widget.driverHomeController,
+                  parentHomeController: widget.parentHomeController,
+                  profileController: widget.profileController,
+                  authController: widget.authController,
+                  themeController: widget.themeController,
+                  ticketController: widget.ticketController,
+                  paymentController: widget.paymentController,
+                  mapController: widget.mapController,
+                  leaveRequestController: widget.leaveRequestController,
+                  scheduleController: widget.scheduleController,
+                  driverScheduleController: widget.driverScheduleController,
+                  notificationController: widget.notificationController,
+                  chatbotController: widget.chatbotController,
+                  fcmService: widget.fcmService,
+                  dioClient: widget.dioClient,
+                  socketService: widget.socketService,
+                  notificationSocketService: widget.notificationSocketService,
+                )
+              : ParentHomeScreen(
+                  controller: widget.parentHomeController,
+                  driverHomeController: widget.driverHomeController,
+                  profileController: widget.profileController,
+                  authController: widget.authController,
+                  themeController: widget.themeController,
+                  ticketController: widget.ticketController,
+                  paymentController: widget.paymentController,
+                  mapController: widget.mapController,
+                  leaveRequestController: widget.leaveRequestController,
+                  scheduleController: widget.scheduleController,
+                  driverScheduleController: widget.driverScheduleController,
+                  notificationController: widget.notificationController,
+                  chatbotController: widget.chatbotController,
+                  fcmService: widget.fcmService,
+                  dioClient: widget.dioClient,
+                  socketService: widget.socketService,
+                  notificationSocketService: widget.notificationSocketService,
+                ),
         ),
       );
     } else {
@@ -179,6 +220,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     passwordController: _passwordController,
                     obscurePassword: _obscurePassword,
                     onTogglePassword: _togglePasswordVisibility,
+                    onForgotPassword: () {
+                      widget.authController.clearError();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ForgotPasswordScreen(
+                            authController: widget.authController,
+                          ),
+                        ),
+                      );
+                    },
                     formKey: _formKey,
                   ),
                 ),

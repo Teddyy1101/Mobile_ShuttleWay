@@ -3,7 +3,7 @@ class AppConstants {
   AppConstants._();
 
   // API
-  static const String apiBaseUrl = 'http://192.168.1.6:8080';
+  static const String apiBaseUrl = 'http://192.168.1.232:8080';
 
   // Assets
   static const String logoPath = 'assets/images/logo2.png';
@@ -61,7 +61,7 @@ class AppConstants {
   static const double bottomNavItemWidth = 72.0;
 
   // WebSocket
-  static const String socketBaseUrl = 'http://192.168.1.6:8080';
+  static const String socketBaseUrl = 'http://192.168.1.232:8080';
 
   // Notification
   static const double notificationIconSize = 48.0;

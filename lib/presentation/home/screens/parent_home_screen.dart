@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../data/models/ticket_model.dart';
 import '../controllers/parent_home_controller.dart';
+import '../controllers/driver_home_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../map/controllers/map_controller.dart';
 import '../../map/screens/map_screen.dart';
@@ -13,13 +14,16 @@ import '../../profile/screens/parent_profile_screen.dart';
 import '../../profile/screens/student_profile_screen.dart';
 import '../../ticket/controllers/ticket_controller.dart';
 import '../../ticket/controllers/payment_controller.dart';
+import '../../ticket/screens/ticket_detail_screen.dart';
 import '../../notification/controllers/notification_controller.dart';
 import '../../notification/screens/notification_screen.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/fcm_service.dart';
+import '../../../core/network/socket_service.dart';
 import '../../../core/network/notification_socket_service.dart';
 import '../controllers/leave_request_controller.dart';
 import '../controllers/schedule_controller.dart';
+import '../controllers/driver_schedule_controller.dart';
 import '../controllers/chatbot_controller.dart';
 import 'schedule_screen.dart';
 import 'chatbot_screen.dart';
@@ -34,9 +38,9 @@ import '../widgets/bottom_nav_bar_widget.dart';
 import 'leave_request_screen.dart';
 import 'ticket_history_screen.dart';
 
-/// Trang chủ chung cho cả phụ huynh và học sinh.
 class ParentHomeScreen extends StatefulWidget {
   final ParentHomeController controller;
+  final DriverHomeController driverHomeController;
   final ProfileController profileController;
   final AuthController authController;
   final ThemeController themeController;
@@ -45,15 +49,18 @@ class ParentHomeScreen extends StatefulWidget {
   final MapController mapController;
   final LeaveRequestController leaveRequestController;
   final ScheduleController scheduleController;
+  final DriverScheduleController driverScheduleController;
   final NotificationController notificationController;
   final ChatbotController chatbotController;
   final FcmService fcmService;
   final DioClient dioClient;
+  final SocketService socketService;
   final NotificationSocketService notificationSocketService;
 
   const ParentHomeScreen({
     super.key,
     required this.controller,
+    required this.driverHomeController,
     required this.profileController,
     required this.authController,
     required this.themeController,
@@ -62,10 +69,12 @@ class ParentHomeScreen extends StatefulWidget {
     required this.mapController,
     required this.leaveRequestController,
     required this.scheduleController,
+    required this.driverScheduleController,
     required this.notificationController,
     required this.chatbotController,
     required this.fcmService,
     required this.dioClient,
+    required this.socketService,
     required this.notificationSocketService,
   });
 
@@ -84,6 +93,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
     // Load dữ liệu chung
     widget.profileController.loadProfile();
     widget.controller.loadData();
+    // Load thông báo gần đây
+    widget.notificationController.loadNotifications(refresh: true);
+    // Load active trips cho map
+    widget.mapController.loadActiveTrips();
     // Nếu là STUDENT → load vé để hiển thị trên home
     if (!widget.profileController.isParent) {
       widget.profileController.loadMyTickets(refresh: true);
@@ -136,6 +149,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
         return MapScreen(
           key: const ValueKey('map'),
           mapController: widget.mapController,
+          profileController: widget.profileController,
+          children: widget.controller.children,
         );
       case 2:
         return ScheduleScreen(
@@ -152,16 +167,19 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
             controller: widget.profileController,
             authController: widget.authController,
             parentHomeController: widget.controller,
+            driverHomeController: widget.driverHomeController,
             themeController: widget.themeController,
             ticketController: widget.ticketController,
             paymentController: widget.paymentController,
             mapController: widget.mapController,
             leaveRequestController: widget.leaveRequestController,
             scheduleController: widget.scheduleController,
+            driverScheduleController: widget.driverScheduleController,
             notificationController: widget.notificationController,
             chatbotController: widget.chatbotController,
             fcmService: widget.fcmService,
             dioClient: widget.dioClient,
+            socketService: widget.socketService,
             notificationSocketService: widget.notificationSocketService,
           );
         } else {
@@ -170,16 +188,19 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
             controller: widget.profileController,
             authController: widget.authController,
             parentHomeController: widget.controller,
+            driverHomeController: widget.driverHomeController,
             themeController: widget.themeController,
             ticketController: widget.ticketController,
             paymentController: widget.paymentController,
             mapController: widget.mapController,
             leaveRequestController: widget.leaveRequestController,
             scheduleController: widget.scheduleController,
+            driverScheduleController: widget.driverScheduleController,
             notificationController: widget.notificationController,
             chatbotController: widget.chatbotController,
             fcmService: widget.fcmService,
             dioClient: widget.dioClient,
+            socketService: widget.socketService,
             notificationSocketService: widget.notificationSocketService,
           );
         }
@@ -191,24 +212,21 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
             listenable: Listenable.merge([
               widget.controller,
               widget.profileController,
+              widget.mapController,
+              widget.notificationController,
             ]),
             builder: (context, _) {
-              final isDataLoading = widget.controller.isLoading &&
-                  widget.controller.profile == null;
-              final isChildrenLoading =
-                  widget.profileController.isLoading &&
-                      widget.profileController.linkedUsers.isEmpty;
-
-              if (isDataLoading || isChildrenLoading) {
-                return _buildLoadingIndicator(context);
-              }
               return _buildParentBody(context);
             },
           );
         } else {
           return ListenableBuilder(
             key: const ValueKey('student_home'),
-            listenable: widget.profileController,
+            listenable: Listenable.merge([
+              widget.profileController,
+              widget.mapController,
+              widget.notificationController,
+            ]),
             builder: (context, _) {
               if (widget.profileController.isLoading &&
                   widget.profileController.profile == null) {
@@ -256,7 +274,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
 
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: controller.loadData,
+        onRefresh: () async {
+          await controller.loadData();
+          await widget.notificationController.loadNotifications(refresh: true);
+          await widget.mapController.loadActiveTrips();
+        },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(
@@ -282,6 +304,13 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
                 isLoading: controller.isLoading,
                 errorMessage: controller.errorMessage,
                 onLinkStudent: controller.linkStudent,
+                selectedChildId: controller.selectedChildId,
+                onChildSelected: (childId) {
+                  controller.selectChild(childId);
+                  // Load active trips cho HS này
+                  widget.mapController.selectStudentTrip(childId);
+                },
+                activeTrip: widget.mapController.selectedTrip,
               ),
               const SizedBox(height: AppConstants.paddingLG),
               QuickActionsWidget(
@@ -292,7 +321,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
               ),
               const SizedBox(height: AppConstants.paddingLG),
               BusMapWidget(
-                onExpandMap: () {
+                mapController: widget.mapController,
+                onExpand: () {
                   setState(() {
                     _previousNavIndex = _currentNavIndex;
                     _currentNavIndex = 1;
@@ -301,7 +331,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
               ),
               const SizedBox(height: AppConstants.paddingLG),
               RecentActivitiesWidget(
-                activities: controller.recentActivities,
+                notifications: widget.notificationController.notifications,
               ),
               const SizedBox(height: AppConstants.paddingMD),
             ],
@@ -321,7 +351,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
 
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: () => widget.profileController.loadMyTickets(refresh: true),
+        onRefresh: () async {
+          await widget.profileController.loadMyTickets(refresh: true);
+          await widget.notificationController.loadNotifications(refresh: true);
+          await widget.mapController.loadActiveTrips();
+        },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(
@@ -356,7 +390,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
               const SizedBox(height: AppConstants.paddingLG),
               // ─── Bus Map ───
               BusMapWidget(
-                onExpandMap: () {
+                mapController: widget.mapController,
+                onExpand: () {
                   setState(() {
                     _previousNavIndex = _currentNavIndex;
                     _currentNavIndex = 1;
@@ -366,7 +401,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
               const SizedBox(height: AppConstants.paddingLG),
               // ─── Recent Activities ───
               RecentActivitiesWidget(
-                activities: widget.controller.recentActivities,
+                notifications: widget.notificationController.notifications,
               ),
               const SizedBox(height: AppConstants.paddingMD),
             ],
@@ -707,7 +742,23 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: ElevatedButton.icon(
               onPressed: () {
-                // TODO: Mở màn hình quét QR điểm danh
+                // Navigate tới TicketDetailScreen với vé ACTIVE
+                final activeTicket = widget.profileController.tickets
+                    .cast<TicketModel?>()
+                    .firstWhere(
+                      (t) => t?.status.toUpperCase() == 'ACTIVE',
+                      orElse: () => null,
+                    );
+                if (activeTicket != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TicketDetailScreen(
+                        ticket: activeTicket,
+                      ),
+                    ),
+                  );
+                }
               },
               icon: const Icon(Icons.qr_code_scanner, size: 20),
               label: const Text('Xem mã QR để điểm danh'),
@@ -893,7 +944,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen>
       context,
       MaterialPageRoute(
         builder: (_) => LeaveRequestScreen(
-          controller: widget.leaveRequestController,
+          leaveRequestController: widget.leaveRequestController,
           profileController: widget.profileController,
         ),
       ),

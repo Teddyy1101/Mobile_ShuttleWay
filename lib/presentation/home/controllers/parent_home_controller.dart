@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../../data/models/login_response.dart';
 import '../../../data/models/child_model.dart';
-import '../../../data/models/activity_model.dart';
 import '../../../data/repositories/parent_repository.dart';
 
 /// Controller quản lý state cho trang chủ phụ huynh.
@@ -17,36 +16,18 @@ class ParentHomeController extends ChangeNotifier {
   String? _errorMessage;
   UserModel? _profile;
   List<ChildModel> _children = [];
+  String? _selectedChildId;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   UserModel? get profile => _profile;
   List<ChildModel> get children => _children;
 
+  /// ID học sinh đang được chọn trên trang chủ PARENT.
+  String? get selectedChildId => _selectedChildId;
+
   /// Có học sinh nào đã liên kết chưa.
   bool get hasChildren => _children.isNotEmpty;
-
-  /// Mock data hoạt động gần đây (chờ backend bổ sung API).
-  List<ActivityModel> get recentActivities => const [
-        ActivityModel(
-          iconType: 'boarded',
-          title: 'Bé đã lên xe',
-          subtitle: 'Tại điểm đón: Chung cư Times City',
-          time: '07:05',
-        ),
-        ActivityModel(
-          iconType: 'bus_arriving',
-          title: 'Xe buýt sắp đến',
-          subtitle: 'Xe 29B-123.45 cách điểm đón 500m',
-          time: '06:55',
-        ),
-        ActivityModel(
-          iconType: 'attendance',
-          title: 'Điểm danh thành công',
-          subtitle: 'Bé được đón bởi Bố',
-          time: 'Hôm qua',
-        ),
-      ];
 
   /// Lời chào theo giờ trong ngày.
   String getGreeting() {
@@ -62,6 +43,12 @@ class ParentHomeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Chọn học sinh để hiển thị thông tin chuyến trên trang chủ.
+  void selectChild(String childId) {
+    _selectedChildId = childId;
+    notifyListeners();
+  }
+
   /// Load danh sách học sinh liên kết.
   Future<void> loadData() async {
     if (_profile?.role != 'PARENT') {
@@ -74,6 +61,12 @@ class ParentHomeController extends ChangeNotifier {
 
     try {
       _children = await _parentRepository.getMyChildren();
+
+      // Tự động chọn HS đầu tiên nếu chưa chọn
+      if (_selectedChildId == null && _children.isNotEmpty) {
+        _selectedChildId = _children.first.id;
+      }
+
       _isLoading = false;
       notifyListeners();
     } on DioException catch (e) {
@@ -114,6 +107,12 @@ class ParentHomeController extends ChangeNotifier {
       await _parentRepository.linkStudent(phone);
       // Reload danh sách children sau khi liên kết thành công
       _children = await _parentRepository.getMyChildren();
+
+      // Tự động chọn HS đầu tiên nếu chưa chọn
+      if (_selectedChildId == null && _children.isNotEmpty) {
+        _selectedChildId = _children.first.id;
+      }
+
       _isLoading = false;
       notifyListeners();
       return true;

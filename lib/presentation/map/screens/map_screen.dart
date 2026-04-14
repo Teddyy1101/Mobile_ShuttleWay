@@ -3,6 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/child_model.dart';
+import '../../profile/controllers/profile_controller.dart';
 import '../controllers/map_controller.dart' as app;
 import '../widgets/bus_marker_widget.dart';
 import '../widgets/station_marker_widget.dart';
@@ -12,8 +14,15 @@ import '../widgets/trip_info_sheet_widget.dart';
 /// Hiển thị tuyến đường, các trạm, và vị trí xe buýt.
 class MapScreen extends StatefulWidget {
   final app.MapController mapController;
+  final ProfileController? profileController;
+  final List<ChildModel> children;
 
-  const MapScreen({super.key, required this.mapController});
+  const MapScreen({
+    super.key,
+    required this.mapController,
+    this.profileController,
+    this.children = const [],
+  });
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -25,7 +34,12 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-    widget.mapController.loadActiveTrips();
+    // Không gọi loadActiveTrips() ở đây — ParentHomeScreen.initState()
+    // đã gọi rồi và discovery polling đang chạy.
+    // Chỉ reload nếu chưa có polling nào đang chạy.
+    if (!widget.mapController.isPollingActive) {
+      widget.mapController.loadActiveTrips();
+    }
   }
 
   @override
@@ -51,7 +65,6 @@ class _MapScreenState extends State<MapScreen> {
   /// Bản đồ chính với polyline, markers, và bottom sheet info.
   Widget _buildMapView(BuildContext context, app.MapController controller) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: Stack(
@@ -74,16 +87,23 @@ class _MapScreenState extends State<MapScreen> {
                     : const ['a', 'b', 'c'],
                 userAgentPackageName: 'com.safewheels.mobile',
               ),
-              // Polyline route
+              // Polyline route: 2 layers (gray remaining + blue traveled)
               if (controller.polylinePoints.isNotEmpty)
                 PolylineLayer(
                   polylines: [
+                    // Full route — gray
                     Polyline(
                       points: controller.polylinePoints,
                       strokeWidth: 4.0,
-                      color: colorScheme.primary.withValues(alpha: 0.7),
+                      color: isDark
+                          ? const Color(0xFF4B5563)
+                          : const Color(0xFFD1D5DB),
                     ),
-                  ],
+                    // Traveled section — blue (hiển thị ngay khi trip bắt đầu)
+                    if (controller.orderedStations.isNotEmpty &&
+                        controller.currentBusPosition != null)
+                      _buildTraveledPolyline(controller),
+                  ].whereType<Polyline>().toList(),
                 ),
               // Station markers
               MarkerLayer(
@@ -109,6 +129,10 @@ class _MapScreenState extends State<MapScreen> {
           // ─── Top bar ───
           _buildTopBar(context, controller, isDark),
 
+          // ─── Student selector (PARENT with ≥2 children) ───
+          if (_isParentWithMultipleChildren)
+            _buildStudentSelector(context, isDark),
+
           // ─── Next station overlay ───
           if (controller.orderedStations.isNotEmpty)
             Positioned(
@@ -129,6 +153,147 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  /// Kiểm tra user là PARENT với ≥2 con.
+  bool get _isParentWithMultipleChildren =>
+      widget.profileController?.isParent == true &&
+      widget.children.length >= 2;
+
+  /// Polyline đoạn đã đi (xanh) — theo polyline thực tế, không phải đường chim bay.
+  Polyline _buildTraveledPolyline(app.MapController controller) {
+    final polyline = controller.polylinePoints;
+    final busPos = controller.currentBusPosition;
+
+    if (polyline.isEmpty || busPos == null) {
+      return Polyline(points: [], strokeWidth: 0, color: Colors.transparent);
+    }
+
+    // Tìm điểm polyline gần nhất với bus hiện tại
+    int closestIdx = 0;
+    double minDist = double.infinity;
+    for (int i = 0; i < polyline.length; i++) {
+      final dx = polyline[i].latitude - busPos.latitude;
+      final dy = polyline[i].longitude - busPos.longitude;
+      final d = dx * dx + dy * dy;
+      if (d < minDist) {
+        minDist = d;
+        closestIdx = i;
+      }
+    }
+
+    // Lấy phần polyline từ đầu → điểm gần bus + vị trí bus
+    final traveledPoints = <LatLng>[
+      ...polyline.sublist(0, closestIdx + 1),
+      busPos,
+    ];
+
+    return Polyline(
+      points: traveledPoints,
+      strokeWidth: 5.0,
+      color: const Color(0xFF4285F4),
+    );
+  }
+
+  /// Student selector chips cho PARENT.
+  Widget _buildStudentSelector(BuildContext context, bool isDark) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final selectedId = widget.mapController.selectedStudentId;
+
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 56,
+      left: AppConstants.paddingMD,
+      right: AppConstants.paddingMD,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.paddingSM,
+          vertical: AppConstants.paddingXS,
+        ),
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppColors.darkSurface.withValues(alpha: 0.92)
+              : Colors.white.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: widget.children.map((child) {
+              final isActive = selectedId == child.id;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () {
+                    widget.mapController.selectStudentTrip(child.id);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? colorScheme.primary
+                          : colorScheme.onSurface.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusSM,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          radius: 10,
+                          backgroundColor: isActive
+                              ? Colors.white.withValues(alpha: 0.3)
+                              : colorScheme.primary.withValues(alpha: 0.15),
+                          backgroundImage: child.avatarUrl != null
+                              ? NetworkImage(child.avatarUrl!)
+                              : null,
+                          child: child.avatarUrl == null
+                              ? Text(
+                                  child.fullName.isNotEmpty
+                                      ? child.fullName[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: isActive
+                                        ? Colors.white
+                                        : colorScheme.primary,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          child.fullName.split(' ').last,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isActive
+                                ? Colors.white
+                                : colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Tạo danh sách Marker cho các trạm.
   List<Marker> _buildStationMarkers(app.MapController controller) {
     final stations = controller.orderedStations;
@@ -136,19 +301,18 @@ class _MapScreenState extends State<MapScreen> {
 
     return List.generate(stations.length, (index) {
       final station = stations[index].station;
+      // currentStation là trạm bus đã đến → đánh dấu passed
       final StationState state;
-      if (index < currentIndex) {
+      if (index <= currentIndex) {
         state = StationState.passed;
-      } else if (index == currentIndex) {
-        state = StationState.current;
       } else {
         state = StationState.upcoming;
       }
 
       return Marker(
         point: LatLng(station.latitude, station.longitude),
-        width: 100,
-        height: 50,
+        width: 120,
+        height: 55,
         child: StationMarkerWidget(
           name: station.name,
           index: index,
