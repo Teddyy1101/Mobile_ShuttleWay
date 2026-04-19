@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
 
-/// Widget chứa form đăng nhập (2 trường: email + password).
 class LoginFormWidget extends StatelessWidget {
   final TextEditingController emailController;
   final TextEditingController passwordController;

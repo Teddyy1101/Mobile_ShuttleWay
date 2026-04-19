@@ -3,7 +3,6 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/app_toast.dart';
 import '../controllers/auth_controller.dart';
 
-/// Màn hình Quên mật khẩu — nhập email để nhận mật khẩu mới.
 class ForgotPasswordScreen extends StatefulWidget {
   final AuthController authController;
 

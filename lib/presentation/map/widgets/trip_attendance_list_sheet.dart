@@ -504,27 +504,66 @@ class _TripAttendanceListSheetState extends State<TripAttendanceListSheet> {
 
     if (result != null) {
       final resultData = result['result'] as Map<String, dynamic>?;
+      final alreadyMarked = resultData?['alreadyMarked'] as bool? ?? false;
       final studentName =
           resultData?['student']?['fullName'] as String? ?? 'Học sinh';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✓ Điểm danh thành công: $studentName'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.success,
-        ),
-      );
+      if (alreadyMarked) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Vé đã được quét trước đó ($studentName)'),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.warning,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ Điểm danh thành công: $studentName'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
 
       // Reload danh sách
       _loadAttendances();
     } else {
+      final errMsg =
+          widget.controller.errorMessage ?? 'Xác minh vé thất bại';
+      final isRouteMismatch = errMsg.contains('không thuộc tuyến đường');
+      final isExpiredTicket = errMsg.contains('không còn hiệu lực');
+      final isWarning = isRouteMismatch || isExpiredTicket;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            widget.controller.errorMessage ?? 'Xác minh vé thất bại',
+          content: Row(
+            children: [
+              Icon(
+                isRouteMismatch
+                    ? Icons.wrong_location_rounded
+                    : isExpiredTicket
+                        ? Icons.block_rounded
+                        : Icons.error_outline,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text(errMsg)),
+            ],
           ),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.error,
+          backgroundColor: isWarning ? AppColors.warning : AppColors.error,
+          duration: const Duration(seconds: 4),
         ),
       );
     }

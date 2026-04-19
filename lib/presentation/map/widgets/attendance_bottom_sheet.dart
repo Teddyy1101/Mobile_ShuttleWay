@@ -627,7 +627,7 @@ class _AttendanceBottomSheetState extends State<AttendanceBottomSheet> {
                 const Icon(Icons.info_outline, color: Colors.white, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Học sinh $studentName đã được điểm danh trước đó'),
+                  child: Text('Vé đã được quét trước đó ($studentName)'),
                 ),
               ],
             ),
@@ -657,13 +657,32 @@ class _AttendanceBottomSheetState extends State<AttendanceBottomSheet> {
       // Reload dữ liệu mới từ API để đồng bộ chính xác
       await _reloadStudents();
     } else {
+      final errMsg =
+          widget.controller.errorMessage ?? 'Xác minh vé thất bại';
+      final isRouteMismatch = errMsg.contains('không thuộc tuyến đường');
+      final isExpiredTicket = errMsg.contains('không còn hiệu lực');
+      final isWarning = isRouteMismatch || isExpiredTicket;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            widget.controller.errorMessage ?? 'Xác minh vé thất bại',
+          content: Row(
+            children: [
+              Icon(
+                isRouteMismatch
+                    ? Icons.wrong_location_rounded
+                    : isExpiredTicket
+                        ? Icons.block_rounded
+                        : Icons.error_outline,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text(errMsg)),
+            ],
           ),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.error,
+          backgroundColor: isWarning ? AppColors.warning : AppColors.error,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
