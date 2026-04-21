@@ -13,7 +13,7 @@ class MapController extends ChangeNotifier {
 
   MapController(this._tripRepository, this._socketService);
 
-  // ─── State ────────────────────────────────────────────
+  // State
   bool _isLoading = false;
   String? _errorMessage;
   List<TripModel> _activeTrips = [];
@@ -24,8 +24,12 @@ class MapController extends ChangeNotifier {
   String? _currentTripId;
   String? _selectedStudentId;
 
+  DateTime? _lastSocketLocationTime;
+
   /// Timer cho discovery (tìm chuyến mới) hoặc tracking (theo dõi trạm).
   Timer? _pollingTimer;
+
+  Timer? _animationTimer;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -168,6 +172,7 @@ class MapController extends ChangeNotifier {
   /// Cập nhật vị trí bus từ station index.
   void _updateBusPositionFromStation(int stationIndex) {
     if (_orderedStations.isNotEmpty) {
+      _animationTimer?.cancel();
       final idx = stationIndex.clamp(0, _orderedStations.length - 1);
       final station = _orderedStations[idx].station;
       _currentBusPosition = LatLng(station.latitude, station.longitude);
@@ -190,8 +195,87 @@ class MapController extends ChangeNotifier {
 
   /// Callback khi nhận tọa độ mới từ WebSocket.
   void _onLocationUpdated(double lat, double lng) {
-    _currentBusPosition = LatLng(lat, lng);
-    notifyListeners();
+    _lastSocketLocationTime = DateTime.now();
+    final receivedPos = LatLng(lat, lng);
+
+    // Nếu có polyline → snap vị trí lên polyline gần nhất
+    // để icon di chuyển mượt trên đường thay vì nhảy ngoài đường
+    final targetPos = _polylinePoints.length >= 2 ? _snapToPolyline(receivedPos) : receivedPos;
+
+    if (_currentBusPosition == null) {
+      _currentBusPosition = targetPos;
+      notifyListeners();
+      return;
+    }
+
+    _animateBusTo(targetPos);
+  }
+
+  void _animateBusTo(LatLng targetPos) {
+    final startPos = _currentBusPosition!;
+    final startTime = DateTime.now();
+    // Animation duration 500ms
+    const duration = Duration(milliseconds: 500);
+
+    _animationTimer?.cancel();
+    _animationTimer = Timer.periodic(const Duration(milliseconds: 32), (timer) {
+      final now = DateTime.now();
+      final elapsed = now.difference(startTime);
+
+      if (elapsed >= duration) {
+        _currentBusPosition = targetPos;
+        notifyListeners();
+        timer.cancel();
+        return;
+      }
+
+      final t = elapsed.inMilliseconds / duration.inMilliseconds;
+      // Linear interpolation
+      final currentLat = startPos.latitude + (targetPos.latitude - startPos.latitude) * t;
+      final currentLng = startPos.longitude + (targetPos.longitude - startPos.longitude) * t;
+      
+      _currentBusPosition = LatLng(currentLat, currentLng);
+      notifyListeners();
+    });
+  }
+
+  /// Snap một vị trí lên điểm gần nhất trên polyline.
+  LatLng _snapToPolyline(LatLng pos) {
+    if (_polylinePoints.isEmpty) return pos;
+
+    double minDist = double.infinity;
+    LatLng closest = pos;
+
+    for (int i = 0; i < _polylinePoints.length - 1; i++) {
+      final projected = _projectOnSegment(
+        pos, _polylinePoints[i], _polylinePoints[i + 1],
+      );
+      final dx = projected.latitude - pos.latitude;
+      final dy = projected.longitude - pos.longitude;
+      final d = dx * dx + dy * dy;
+      if (d < minDist) {
+        minDist = d;
+        closest = projected;
+      }
+    }
+
+    return closest;
+  }
+
+  /// Chiếu điểm P lên đoạn thẳng AB, trả về điểm gần nhất trên đoạn.
+  LatLng _projectOnSegment(LatLng p, LatLng a, LatLng b) {
+    final dx = b.latitude - a.latitude;
+    final dy = b.longitude - a.longitude;
+    if (dx == 0 && dy == 0) return a;
+
+    var t = ((p.latitude - a.latitude) * dx + (p.longitude - a.longitude) * dy) /
+        (dx * dx + dy * dy);
+    t = t.clamp(0.0, 1.0);
+
+    return LatLng(
+      a.latitude + t * dx,
+      a.longitude + t * dy,
+    );
   }
 
   /// Callback khi giả lập hoàn thành.
@@ -205,6 +289,8 @@ class MapController extends ChangeNotifier {
   void _stopPolling() {
     _pollingTimer?.cancel();
     _pollingTimer = null;
+    _animationTimer?.cancel();
+    _animationTimer = null;
   }
 
   /// Discovery polling — tìm chuyến active mới mỗi 5 giây.
@@ -247,12 +333,22 @@ class MapController extends ChangeNotifier {
     try {
       final updatedTrip = await _tripRepository.getTripTracking(tripId);
 
-      // Cập nhật currentStation + vị trí bus nếu thay đổi
+      // Cập nhật currentStation nếu thay đổi
       if (_selectedTrip != null &&
           updatedTrip.currentStation != _selectedTrip!.currentStation) {
         _selectedTrip = updatedTrip;
-        // Cập nhật vị trí bus tại trạm mới
-        _updateBusPositionFromStation(updatedTrip.currentStation);
+
+        // Chỉ snap vị trí bus về trạm khi KHÔNG có socket location gần đây.
+        // Nếu socket đang hoạt động (< 3 giây), vị trí bus đã được cập nhật
+        // liên tục theo tọa độ thực → không cần ghi đè.
+        final now = DateTime.now();
+        final hasRecentSocket = _lastSocketLocationTime != null &&
+            now.difference(_lastSocketLocationTime!).inSeconds < 3;
+
+        if (!hasRecentSocket) {
+          _updateBusPositionFromStation(updatedTrip.currentStation);
+        }
+
         notifyListeners();
       }
 

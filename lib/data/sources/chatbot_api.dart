@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../core/network/dio_client.dart';
 
 /// Data source giao tiếp với backend cho luồng Chatbot AI.
@@ -23,6 +24,9 @@ class ChatbotApi {
         'message': message,
         'history': history,
       },
+      options: Options(
+        receiveTimeout: const Duration(minutes: 5),
+      ),
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {

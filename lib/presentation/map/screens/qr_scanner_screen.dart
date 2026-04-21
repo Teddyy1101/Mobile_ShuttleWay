@@ -238,12 +238,16 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                     color: Colors.white,
                   ),
                   SizedBox(width: 8),
-                  Text(
-                    'Quét mã QR vé học sinh',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                  Flexible(
+                    child: Text(
+                      'Quét mã QR vé học sinh',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],

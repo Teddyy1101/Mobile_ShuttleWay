@@ -1215,6 +1215,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
         final arrivedStationIdx = _nextStationIdx;
         _nextStationIdx++;
 
+        // ★ Emit vị trí trạm qua socket NGAY LẬP TỨC cho parent/student
+        // Trước đây code return sớm mà không emit → parent không nhận được
+        final tripForEmit = widget.driverHomeController.activeTrip;
+        if (tripForEmit != null) {
+          widget.socketService.emitLocation(
+            tripForEmit.id,
+            currentPos.latitude,
+            currentPos.longitude,
+          );
+        }
+
         // Gọi API updateStation ngay khi đến trạm → FCM gửi ngay lập tức
         final trip = widget.driverHomeController.activeTrip;
         if (trip != null) {

@@ -164,11 +164,13 @@ class SocketService {
 
   /// Tài xế gửi cập nhật vị trí qua socket.
   void emitLocation(String tripId, double lat, double lng) {
-    _socket?.emit('update_location', {
-      'tripId': tripId,
-      'lat': lat,
-      'lng': lng,
-    });
+    if (_socket != null && _isConnected) {
+      _socket!.emit('update_location', {
+        'tripId': tripId,
+        'lat': lat,
+        'lng': lng,
+      });
+    }
   }
 
   /// Rời khỏi room theo dõi chuyến đi.
