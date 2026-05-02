@@ -128,7 +128,9 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
@@ -320,6 +322,7 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
           );
         }
       ),
+    ),
     );
   }
 

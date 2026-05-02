@@ -239,11 +239,12 @@ class UserApi {
   /// Đổi mật khẩu cho user đang đăng nhập.
   Future<void> changePassword(String oldPassword, String newPassword) async {
     try {
-      final response = await _dioClient.dio.post(
+      final response = await _dioClient.dio.patch(
         '/auth/change-password',
         data: {
           'oldPassword': oldPassword,
           'newPassword': newPassword,
+          'confirmPassword': newPassword,
         },
       );
 

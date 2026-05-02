@@ -4,6 +4,8 @@ import '../models/login_request.dart';
 import '../models/login_response.dart';
 import '../models/register_request.dart';
 import '../models/register_response.dart';
+import '../models/social_login_request.dart';
+import '../models/social_login_response.dart';
 
 /// Data source giao tiếp trực tiếp với backend cho luồng Auth.
 class AuthApi {
@@ -64,6 +66,33 @@ class AuthApi {
       rethrow;
     } catch (e) {
       throw Exception('Lỗi không xác định khi đăng ký: $e');
+    }
+  }
+
+  /// Gọi API POST /auth/social-login.
+  Future<SocialLoginResponse> socialLogin(SocialLoginRequest request) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '/auth/social-login',
+        data: request.toJson(),
+      );
+
+      // 200: OK, 202: Accepted (Cần thêm info)
+      if (response.statusCode == 200 || response.statusCode == 202) {
+        return SocialLoginResponse.fromJson(
+          response.data as Map<String, dynamic>,
+        );
+      }
+
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        message: 'Đăng nhập social thất bại (status: ${response.statusCode})',
+      );
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Lỗi không xác định khi đăng nhập social: $e');
     }
   }
 }

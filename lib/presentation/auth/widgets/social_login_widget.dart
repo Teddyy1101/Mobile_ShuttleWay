@@ -3,7 +3,14 @@ import '../../../core/constants/app_constants.dart';
 
 /// Widget hiển thị phần "Hoặc đăng nhập bằng" với nút Google và FaceID.
 class SocialLoginWidget extends StatelessWidget {
-  const SocialLoginWidget({super.key});
+  final VoidCallback onGoogleTap;
+  final VoidCallback onFacebookTap;
+
+  const SocialLoginWidget({
+    super.key,
+    required this.onGoogleTap,
+    required this.onFacebookTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,19 +56,15 @@ class SocialLoginWidget extends StatelessWidget {
               child: _SocialButton(
                 icon: Icons.g_mobiledata,
                 label: 'Google',
-                onTap: () {
-                  // TODO: Implement Google Sign-In
-                },
+                onTap: onGoogleTap,
               ),
             ),
             const SizedBox(width: AppConstants.paddingMD),
             Expanded(
               child: _SocialButton(
-                icon: Icons.face,
-                label: 'FaceID',
-                onTap: () {
-                  // TODO: Implement FaceID
-                },
+                icon: Icons.facebook,
+                label: 'Facebook',
+                onTap: onFacebookTap,
               ),
             ),
           ],

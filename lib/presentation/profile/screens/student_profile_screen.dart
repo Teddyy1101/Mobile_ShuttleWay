@@ -1055,6 +1055,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final oldPwCtrl = TextEditingController();
     final newPwCtrl = TextEditingController();
+    final confirmPwCtrl = TextEditingController();
+    final confirmFocusNode = FocusNode();
     final formKey = GlobalKey<FormState>();
     final sheetBg = isDark ? const Color(0xFF1C252E) : Colors.white;
 
@@ -1066,16 +1068,20 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            24, 16, 24,
-            24 + MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40, height: 4,
+        return GestureDetector(
+          onTap: () => FocusScope.of(ctx).unfocus(),
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              24, 16, 24,
+              24 + MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40, height: 4,
                 decoration: BoxDecoration(
                   color: isDark ? Colors.grey[600] : Colors.grey[300],
                   borderRadius: BorderRadius.circular(2),
@@ -1109,7 +1115,14 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               const SizedBox(height: 24),
               Form(
                 key: formKey,
-                child: _PasswordFields(oldPwCtrl: oldPwCtrl, newPwCtrl: newPwCtrl, isDark: isDark, theme: theme),
+                child: _PasswordFields(
+                  oldPwCtrl: oldPwCtrl,
+                  newPwCtrl: newPwCtrl,
+                  confirmPwCtrl: confirmPwCtrl,
+                  confirmFocusNode: confirmFocusNode,
+                  isDark: isDark,
+                  theme: theme,
+                ),
               ),
               const SizedBox(height: 24),
               ListenableBuilder(
@@ -1134,6 +1147,20 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                           ),
                           child: ElevatedButton(
                             onPressed: widget.controller.isChangingPassword ? null : () async {
+                              FocusScope.of(ctx).unfocus();
+                              
+                              if (newPwCtrl.text.isNotEmpty && confirmPwCtrl.text.isNotEmpty && newPwCtrl.text != confirmPwCtrl.text) {
+                                confirmFocusNode.requestFocus();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text('Mật khẩu không khớp'),
+                                    backgroundColor: Colors.red[600],
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                );
+                              }
+
                               if (!formKey.currentState!.validate()) return;
                               final success = await widget.controller.changePassword(oldPwCtrl.text.trim(), newPwCtrl.text.trim());
                               if (ctx.mounted && success) {
@@ -1146,6 +1173,16 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                 );
+                              } else if (ctx.mounted && widget.controller.errorMessage != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(widget.controller.errorMessage!),
+                                    backgroundColor: Colors.red[600],
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                );
+                                widget.controller.clearError();
                               }
                             },
                             style: ElevatedButton.styleFrom(
@@ -1182,7 +1219,9 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               ),
             ],
           ),
-        );
+        ),
+          ),
+      );
       },
     );
   }
@@ -1304,12 +1343,16 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 class _PasswordFields extends StatefulWidget {
   final TextEditingController oldPwCtrl;
   final TextEditingController newPwCtrl;
+  final TextEditingController confirmPwCtrl;
+  final FocusNode confirmFocusNode;
   final bool isDark;
   final ThemeData theme;
 
   const _PasswordFields({
     required this.oldPwCtrl,
     required this.newPwCtrl,
+    required this.confirmPwCtrl,
+    required this.confirmFocusNode,
     required this.isDark,
     required this.theme,
   });
@@ -1321,6 +1364,7 @@ class _PasswordFields extends StatefulWidget {
 class _PasswordFieldsState extends State<_PasswordFields> {
   bool _showOldPw = false;
   bool _showNewPw = false;
+  bool _showConfirmPw = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1378,6 +1422,37 @@ class _PasswordFieldsState extends State<_PasswordFields> {
           validator: (v) {
             if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu mới';
             if (v.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự';
+            return null;
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: widget.confirmPwCtrl,
+          focusNode: widget.confirmFocusNode,
+          obscureText: !_showConfirmPw,
+          decoration: InputDecoration(
+            labelText: 'Nhập lại mật khẩu mới',
+            prefixIcon: Icon(Icons.lock_reset_outlined, color: widget.isDark ? Colors.grey[400] : Colors.grey[600], size: 20),
+            suffixIcon: IconButton(
+              icon: Icon(_showConfirmPw ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: widget.isDark ? Colors.grey[400] : Colors.grey[500], size: 20),
+              onPressed: () => setState(() => _showConfirmPw = !_showConfirmPw),
+            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppConstants.radiusMD)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+              borderSide: BorderSide(color: widget.isDark ? Colors.grey[700]! : Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+              borderSide: BorderSide(color: widget.theme.colorScheme.primary, width: 1.5),
+            ),
+            filled: true,
+            fillColor: widget.isDark ? Colors.grey[900]!.withValues(alpha: 0.3) : Colors.grey[50],
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+          validator: (v) {
+            if (v == null || v.isEmpty) return 'Vui lòng nhập lại mật khẩu mới';
+            if (v != widget.newPwCtrl.text) return 'Mật khẩu không khớp';
             return null;
           },
         ),

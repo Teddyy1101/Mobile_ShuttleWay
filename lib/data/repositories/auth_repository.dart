@@ -2,6 +2,8 @@ import '../models/login_request.dart';
 import '../models/login_response.dart';
 import '../models/register_request.dart';
 import '../models/register_response.dart';
+import '../models/social_login_request.dart';
+import '../models/social_login_response.dart';
 
 /// Interface (Abstract class) cho Auth Repository.
 /// Tất cả các tầng trên (Controller/Bloc) chỉ gọi qua interface này
@@ -12,4 +14,7 @@ abstract class AuthRepository {
 
   /// Đăng ký tài khoản mới.
   Future<RegisterResponse> register(RegisterRequest request);
+
+  /// Đăng nhập bằng mạng xã hội.
+  Future<SocialLoginResponse> socialLogin(SocialLoginRequest request);
 }

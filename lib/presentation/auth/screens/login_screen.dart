@@ -23,6 +23,8 @@ import '../../notification/controllers/notification_controller.dart';
 import '../../home/controllers/chatbot_controller.dart';
 import '../widgets/login_form_widget.dart';
 import '../widgets/social_login_widget.dart';
+import '../widgets/social_role_dialog.dart';
+import '../../../data/models/social_login_response.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -99,89 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
-      // Gán profile từ thông tin đăng nhập (tránh gọi lại API /users/me)
-      final user = widget.authController.user;
-      if (user != null) {
-        widget.parentHomeController.setProfileFromLogin(user);
-        widget.profileController.setProfileFromLogin(user);
-        // Gán profile cho driver controller nếu role DRIVER
-        if (user.role == 'DRIVER') {
-          widget.driverHomeController.setProfileFromLogin(user);
-        }
-      }
-
-      // Đăng ký FCM token + kết nối notification socket (fire-and-forget)
-      widget.fcmService.registerToken(widget.dioClient).then((_) {
-        // Lắng nghe token refresh → gửi lại lên server
-        widget.fcmService.onTokenRefresh((newToken) {
-          widget.dioClient.dio.patch('/users/me', data: {'fcmToken': newToken});
-        });
-      });
-
-      // Kết nối Socket.IO notification + lắng nghe realtime
-      widget.notificationSocketService.connect().then((_) {
-        final userId = user?.id ?? '';
-        if (userId.isNotEmpty) {
-          widget.notificationSocketService.joinNotifications(userId);
-          widget.notificationSocketService.onNewNotification((data) {
-            final notification = NotificationModel.fromJson(data);
-            widget.notificationController.onNewNotificationReceived(notification);
-          });
-        }
-      });
-
-      // Lắng nghe FCM foreground → chèn vào controller
-      widget.fcmService.onForegroundMessage((title, body) {
-        widget.notificationController.loadNotifications(refresh: true);
-      });
-
-      // Chuyển hướng theo role
-      final isDriver = user?.role == 'DRIVER';
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => isDriver
-              ? DriverHomeScreen(
-                  driverHomeController: widget.driverHomeController,
-                  parentHomeController: widget.parentHomeController,
-                  profileController: widget.profileController,
-                  authController: widget.authController,
-                  themeController: widget.themeController,
-                  ticketController: widget.ticketController,
-                  paymentController: widget.paymentController,
-                  mapController: widget.mapController,
-                  leaveRequestController: widget.leaveRequestController,
-                  scheduleController: widget.scheduleController,
-                  driverScheduleController: widget.driverScheduleController,
-                  notificationController: widget.notificationController,
-                  chatbotController: widget.chatbotController,
-                  fcmService: widget.fcmService,
-                  dioClient: widget.dioClient,
-                  socketService: widget.socketService,
-                  notificationSocketService: widget.notificationSocketService,
-                )
-              : ParentHomeScreen(
-                  controller: widget.parentHomeController,
-                  driverHomeController: widget.driverHomeController,
-                  profileController: widget.profileController,
-                  authController: widget.authController,
-                  themeController: widget.themeController,
-                  ticketController: widget.ticketController,
-                  paymentController: widget.paymentController,
-                  mapController: widget.mapController,
-                  leaveRequestController: widget.leaveRequestController,
-                  scheduleController: widget.scheduleController,
-                  driverScheduleController: widget.driverScheduleController,
-                  notificationController: widget.notificationController,
-                  chatbotController: widget.chatbotController,
-                  fcmService: widget.fcmService,
-                  dioClient: widget.dioClient,
-                  socketService: widget.socketService,
-                  notificationSocketService: widget.notificationSocketService,
-                ),
-        ),
-      );
+      _onLoginSuccess();
     } else {
       final error = widget.authController.errorMessage;
       if (error != null) {
@@ -190,11 +110,133 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleSocialLogin(Future<SocialLoginResponse?> Function() loginAction) async {
+    final response = await loginAction();
+    if (!mounted) return;
+
+    if (response == null) {
+      final error = widget.authController.errorMessage;
+      if (error != null) AppToast.showError(context, error);
+      return;
+    }
+
+    if (response.requiresAdditionalInfo) {
+      // Hiện dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => SocialRoleDialog(
+          onSubmit: (role, phone) async {
+            Navigator.pop(context); // Đóng dialog
+            final success = await widget.authController.completeSocialLogin(role, phone);
+            if (!mounted) return;
+            if (success) {
+              _onLoginSuccess();
+            } else {
+              final error = widget.authController.errorMessage;
+              if (error != null) AppToast.showError(context, error);
+            }
+          },
+        ),
+      );
+    } else {
+      _onLoginSuccess();
+    }
+  }
+
+  void _onLoginSuccess() {
+    // Gán profile từ thông tin đăng nhập (tránh gọi lại API /users/me)
+    final user = widget.authController.user;
+    if (user != null) {
+      widget.parentHomeController.setProfileFromLogin(user);
+      widget.profileController.setProfileFromLogin(user);
+      // Gán profile cho driver controller nếu role DRIVER
+      if (user.role == 'DRIVER') {
+        widget.driverHomeController.setProfileFromLogin(user);
+      }
+    }
+
+    // Đăng ký FCM token + kết nối notification socket (fire-and-forget)
+    widget.fcmService.registerToken(widget.dioClient).then((_) {
+      // Lắng nghe token refresh → gửi lại lên server
+      widget.fcmService.onTokenRefresh((newToken) {
+        widget.dioClient.dio.patch('/users/me', data: {'fcmToken': newToken});
+      });
+    });
+
+    // Kết nối Socket.IO notification + lắng nghe realtime
+    widget.notificationSocketService.connect().then((_) {
+      final userId = user?.id ?? '';
+      if (userId.isNotEmpty) {
+        widget.notificationSocketService.joinNotifications(userId);
+        widget.notificationSocketService.onNewNotification((data) {
+          final notification = NotificationModel.fromJson(data);
+          widget.notificationController.onNewNotificationReceived(notification);
+        });
+      }
+    });
+
+    // Lắng nghe FCM foreground → chèn vào controller
+    widget.fcmService.onForegroundMessage((title, body) {
+      widget.notificationController.loadNotifications(refresh: true);
+    });
+
+    // Chuyển hướng theo role
+    final isDriver = user?.role == 'DRIVER';
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => isDriver
+            ? DriverHomeScreen(
+                driverHomeController: widget.driverHomeController,
+                parentHomeController: widget.parentHomeController,
+                profileController: widget.profileController,
+                authController: widget.authController,
+                themeController: widget.themeController,
+                ticketController: widget.ticketController,
+                paymentController: widget.paymentController,
+                mapController: widget.mapController,
+                leaveRequestController: widget.leaveRequestController,
+                scheduleController: widget.scheduleController,
+                driverScheduleController: widget.driverScheduleController,
+                notificationController: widget.notificationController,
+                chatbotController: widget.chatbotController,
+                fcmService: widget.fcmService,
+                dioClient: widget.dioClient,
+                socketService: widget.socketService,
+                notificationSocketService: widget.notificationSocketService,
+              )
+            : ParentHomeScreen(
+                controller: widget.parentHomeController,
+                driverHomeController: widget.driverHomeController,
+                profileController: widget.profileController,
+                authController: widget.authController,
+                themeController: widget.themeController,
+                ticketController: widget.ticketController,
+                paymentController: widget.paymentController,
+                mapController: widget.mapController,
+                leaveRequestController: widget.leaveRequestController,
+                scheduleController: widget.scheduleController,
+                driverScheduleController: widget.driverScheduleController,
+                notificationController: widget.notificationController,
+                chatbotController: widget.chatbotController,
+                fcmService: widget.fcmService,
+                dioClient: widget.dioClient,
+                socketService: widget.socketService,
+                notificationSocketService: widget.notificationSocketService,
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
       appBar: AppBar(
         title: Text(
           'Đăng nhập',
@@ -242,7 +284,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: AppConstants.paddingXL),
                 Transform.translate(
                   offset: const Offset(0, -30),
-                  child: const SocialLoginWidget(),
+                  child: SocialLoginWidget(
+                    onGoogleTap: () => _handleSocialLogin(widget.authController.signInWithGoogle),
+                    onFacebookTap: () => _handleSocialLogin(widget.authController.signInWithFacebook),
+                  ),
                 ),
                 const SizedBox(height: AppConstants.paddingXL),
                 Transform.translate(
@@ -255,6 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         },
       ),
+    ),
     );
   }
 
