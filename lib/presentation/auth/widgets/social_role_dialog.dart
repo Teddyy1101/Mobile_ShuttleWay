@@ -38,12 +38,13 @@ class _SocialRoleDialogState extends State<SocialRoleDialog> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppConstants.radiusLG),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.paddingLG),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.paddingLG),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
@@ -77,31 +78,20 @@ class _SocialRoleDialogState extends State<SocialRoleDialog> {
               Row(
                 children: [
                   Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Phụ huynh', style: TextStyle(fontSize: 13)),
-                      value: 'PARENT',
-                      groupValue: _selectedRole,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedRole = value!;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
+                    child: _buildRoleCard(
+                      context: context,
+                      title: 'Phụ huynh',
+                      icon: Icons.family_restroom,
+                      role: 'PARENT',
                     ),
                   ),
+                  const SizedBox(width: AppConstants.paddingMD),
                   Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Học sinh', style: TextStyle(fontSize: 13)),
-                      value: 'STUDENT',
-                      groupValue: _selectedRole,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedRole = value!;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
+                    child: _buildRoleCard(
+                      context: context,
+                      title: 'Học sinh',
+                      icon: Icons.school,
+                      role: 'STUDENT',
                     ),
                   ),
                 ],
@@ -157,6 +147,55 @@ class _SocialRoleDialogState extends State<SocialRoleDialog> {
               ),
             ],
           ),
+        ),
+      ),
+      )
+    );
+  }
+
+  Widget _buildRoleCard({
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    required String role,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isSelected = _selectedRole == role;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedRole = role;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? colorScheme.primary.withAlpha(25) : Colors.transparent,
+          border: Border.all(
+            color: isSelected ? colorScheme.primary : colorScheme.onSurface.withAlpha(50),
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 28,
+              color: isSelected ? colorScheme.primary : colorScheme.onSurface.withAlpha(150),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -62,5 +62,16 @@
 	<string>YOUR_FACEBOOK_CLIENT_TOKEN</string>
 	<key>FacebookDisplayName</key>
 	<string>ShuttleWay</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SafeWheels cần truy cập vị trí để theo dõi xe buýt khi đang hoạt động.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SafeWheels cần truy cập vị trí trong nền để tiếp tục theo dõi xe buýt.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>SafeWheels cần truy cập vị trí để theo dõi xe buýt liên tục.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+	</array>
 </dict>
 </plist>

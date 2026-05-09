@@ -80,4 +80,7 @@ class ApiProfileRepository implements ProfileRepository {
 
   @override
   Future<void> unlinkParent(String parentId) => _userApi.unlinkParent(parentId);
+
+  @override
+  Future<void> linkSocial(String idToken) => _userApi.linkSocial(idToken);
 }

@@ -246,57 +246,68 @@ class _LoginScreenState extends State<LoginScreen> {
       body: ListenableBuilder(
         listenable: widget.authController,
         builder: (context, _) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.paddingLG,
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: AppConstants.paddingMD),
-                _buildLogo(colorScheme),
-                const SizedBox(height: AppConstants.paddingXL),
-                Transform.translate(
-                  offset: const Offset(0, -30),
-                  child: LoginFormWidget(
-                    emailController: _emailController,
-                    passwordController: _passwordController,
-                    obscurePassword: _obscurePassword,
-                    onTogglePassword: _togglePasswordVisibility,
-                    onForgotPassword: () {
-                      widget.authController.clearError();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ForgotPasswordScreen(
-                            authController: widget.authController,
-                          ),
-                        ),
-                      );
-                    },
-                    formKey: _formKey,
+          return Stack(
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.paddingLG,
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: AppConstants.paddingMD),
+                    _buildLogo(colorScheme),
+                    const SizedBox(height: AppConstants.paddingXL),
+                    Transform.translate(
+                      offset: const Offset(0, -30),
+                      child: LoginFormWidget(
+                        emailController: _emailController,
+                        passwordController: _passwordController,
+                        obscurePassword: _obscurePassword,
+                        onTogglePassword: _togglePasswordVisibility,
+                        onForgotPassword: () {
+                          widget.authController.clearError();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ForgotPasswordScreen(
+                                authController: widget.authController,
+                              ),
+                            ),
+                          );
+                        },
+                        formKey: _formKey,
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.paddingSM),
+                    Transform.translate(
+                      offset: const Offset(0, -30),
+                      child: _buildLoginButton(colorScheme),
+                    ),
+                    const SizedBox(height: AppConstants.paddingXL),
+                    Transform.translate(
+                      offset: const Offset(0, -30),
+                      child: SocialLoginWidget(
+                        onGoogleTap: () => _handleSocialLogin(widget.authController.signInWithGoogle),
+                        onFacebookTap: () => _handleSocialLogin(widget.authController.signInWithFacebook),
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.paddingXL),
+                    Transform.translate(
+                      offset: const Offset(0, -30),
+                      child: _buildRegisterLink(colorScheme),
+                    ),
+                    const SizedBox(height: AppConstants.paddingXL),
+                  ],
+                ),
+              ),
+              if (widget.authController.isLoading)
+                Container(
+                  color: Colors.black.withOpacity(0.3),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
                   ),
                 ),
-                const SizedBox(height: AppConstants.paddingSM),
-                Transform.translate(
-                  offset: const Offset(0, -30),
-                  child: _buildLoginButton(colorScheme),
-                ),
-                const SizedBox(height: AppConstants.paddingXL),
-                Transform.translate(
-                  offset: const Offset(0, -30),
-                  child: SocialLoginWidget(
-                    onGoogleTap: () => _handleSocialLogin(widget.authController.signInWithGoogle),
-                    onFacebookTap: () => _handleSocialLogin(widget.authController.signInWithFacebook),
-                  ),
-                ),
-                const SizedBox(height: AppConstants.paddingXL),
-                Transform.translate(
-                  offset: const Offset(0, -30),
-                  child: _buildRegisterLink(colorScheme),
-                ),
-                const SizedBox(height: AppConstants.paddingXL),
-              ],
-            ),
+            ],
           );
         },
       ),

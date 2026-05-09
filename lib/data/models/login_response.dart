@@ -6,6 +6,8 @@ class UserModel {
   final String role;
   final String? avatarUrl;
   final String? phone;
+  final String? googleId;
+  final String? facebookId;
 
   const UserModel({
     required this.id,
@@ -14,6 +16,8 @@ class UserModel {
     required this.role,
     this.avatarUrl,
     this.phone,
+    this.googleId,
+    this.facebookId,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -24,6 +28,8 @@ class UserModel {
       role: json['role'] as String? ?? '',
       avatarUrl: json['avatarUrl'] as String?,
       phone: json['phone'] as String?,
+      googleId: json['googleId'] as String?,
+      facebookId: json['facebookId'] as String?,
     );
   }
 
@@ -32,6 +38,8 @@ class UserModel {
     String? fullName,
     String? phone,
     String? avatarUrl,
+    String? googleId,
+    String? facebookId,
   }) {
     return UserModel(
       id: id,
@@ -40,6 +48,8 @@ class UserModel {
       role: role,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       phone: phone ?? this.phone,
+      googleId: googleId ?? this.googleId,
+      facebookId: facebookId ?? this.facebookId,
     );
   }
 }

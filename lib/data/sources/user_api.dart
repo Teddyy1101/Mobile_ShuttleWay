@@ -264,4 +264,29 @@ class UserApi {
       throw Exception('Lỗi không xác định khi đổi mật khẩu: $e');
     }
   }
+
+  /// Gọi API POST /users/me/link-social.
+  /// Liên kết tài khoản Google hoặc Facebook.
+  Future<void> linkSocial(String idToken) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '/users/me/link-social',
+        data: {'idToken': idToken},
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return;
+      }
+
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        message: 'Liên kết tài khoản thất bại (status: ${response.statusCode})',
+      );
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Lỗi không xác định khi liên kết tài khoản: $e');
+    }
+  }
 }

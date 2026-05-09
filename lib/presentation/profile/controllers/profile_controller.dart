@@ -7,6 +7,9 @@ import '../../../data/models/child_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/ticket_model.dart';
 import '../../../data/repositories/profile_repository.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
 /// Controller quản lý state cho màn hình Cá nhân (Profile).
 /// Sử dụng ChangeNotifier + ListenableBuilder pattern.
@@ -221,6 +224,97 @@ class ProfileController extends ChangeNotifier {
     } catch (e) {
       _isUpdatingProfile = false;
       _errorMessage = 'Đã xảy ra lỗi khi cập nhật thông tin';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Liên kết tài khoản Google
+  Future<bool> linkWithGoogle() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      
+      final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final idToken = await userCredential.user?.getIdToken();
+
+      if (idToken != null) {
+        await _profileRepository.linkSocial(idToken);
+        // Load lại profile để cập nhật googleId
+        _profile = await _profileRepository.getProfile();
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+      
+      _isLoading = false;
+      _errorMessage = 'Không thể lấy ID Token từ Google';
+      notifyListeners();
+      return false;
+    } on DioException catch (e) {
+      _isLoading = false;
+      _handleDioError(e);
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Đã xảy ra lỗi khi liên kết Google: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Liên kết tài khoản Facebook
+  Future<bool> linkWithFacebook() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final LoginResult result = await FacebookAuth.instance.login();
+      if (result.status == LoginStatus.success) {
+        final OAuthCredential credential = FacebookAuthProvider.credential(result.accessToken!.tokenString);
+        final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        final idToken = await userCredential.user?.getIdToken();
+
+        if (idToken != null) {
+          await _profileRepository.linkSocial(idToken);
+          // Load lại profile để cập nhật facebookId
+          _profile = await _profileRepository.getProfile();
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        }
+      }
+      
+      _isLoading = false;
+      if (result.status == LoginStatus.cancelled) return false;
+      
+      _errorMessage = 'Đăng nhập Facebook thất bại';
+      notifyListeners();
+      return false;
+    } on DioException catch (e) {
+      _isLoading = false;
+      _handleDioError(e);
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Đã xảy ra lỗi khi liên kết Facebook: $e';
       notifyListeners();
       return false;
     }

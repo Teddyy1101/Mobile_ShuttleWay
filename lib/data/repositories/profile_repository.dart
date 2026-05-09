@@ -53,5 +53,8 @@ abstract class ProfileRepository {
 
   /// Học sinh hủy liên kết với phụ huynh.
   Future<void> unlinkParent(String parentId);
+
+  /// Liên kết mạng xã hội (Google/Facebook).
+  Future<void> linkSocial(String idToken);
 }
 

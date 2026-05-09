@@ -160,6 +160,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     const SizedBox(height: 16),
                   ],
 
+                  // ── Social Links ──
+                  _buildSocialLinks(theme, isDark),
+                  const SizedBox(height: 32),
+
                   // ── Save button ──
                   _buildSaveButton(theme, isDark),
                 ],
@@ -348,6 +352,90 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           vertical: 14,
         ),
       ),
+    );
+  }
+
+  // Social Links Section
+
+  Widget _buildSocialLinks(ThemeData theme, bool isDark) {
+    final profile = widget.controller.profile;
+    if (profile == null) return const SizedBox.shrink();
+
+    final hasGoogle = profile.googleId != null && profile.googleId!.isNotEmpty;
+    final hasFacebook = profile.facebookId != null && profile.facebookId!.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Liên kết mạng xã hội',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey[900]!.withOpacity(0.3) : Colors.white,
+            borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+            border: Border.all(
+              color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+            ),
+          ),
+          child: Column(
+            children: [
+              _buildSocialTile(
+                icon: Icons.g_mobiledata_rounded,
+                iconColor: Colors.red[600]!,
+                title: 'Google',
+                isLinked: hasGoogle,
+                onTap: hasGoogle ? null : () => widget.controller.linkWithGoogle(),
+              ),
+              Divider(
+                height: 1,
+                color: isDark ? Colors.grey[800] : Colors.grey[200],
+              ),
+              _buildSocialTile(
+                icon: Icons.facebook_rounded,
+                iconColor: Colors.blue[600]!,
+                title: 'Facebook',
+                isLinked: hasFacebook,
+                onTap: hasFacebook ? null : () => widget.controller.linkWithFacebook(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSocialTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required bool isLinked,
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor, size: 32),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      trailing: isLinked
+          ? const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Đã liên kết', style: TextStyle(color: Colors.green, fontSize: 13)),
+                SizedBox(width: 4),
+                Icon(Icons.check_circle, color: Colors.green, size: 18),
+              ],
+            )
+          : ElevatedButton(
+              onPressed: onTap,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                minimumSize: const Size(0, 32),
+              ),
+              child: const Text('Liên kết', style: TextStyle(fontSize: 13)),
+            ),
     );
   }
 

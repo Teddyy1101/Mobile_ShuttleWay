@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/location_service.dart';
 import '../../../core/network/socket_service.dart';
 import '../../../core/utils/polyline_decoder.dart';
 import '../../../data/models/trip_model.dart';
@@ -29,6 +30,7 @@ class DriverMapScreen extends StatefulWidget {
 
 class _DriverMapScreenState extends State<DriverMapScreen> {
   final MapController _mapController = MapController();
+  final LocationService _locationService = LocationService();
 
   List<LatLng> _polylinePoints = [];
   List<TripRouteStationModel> _orderedStations = [];
@@ -43,6 +45,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   bool _hasFittedBounds = false;
   bool _reachedLastStation = false;
 
+  /// `true` = chạy GPS thật, `false` = chạy demo (giả lập polyline).
+  bool _isRealGps = false;
+
   /// Khoảng cách di chuyển mỗi tick (mét).
   static const double _moveStepMeters = 5.0;
 
@@ -55,6 +60,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   @override
   void dispose() {
     _moveTimer?.cancel();
+    _locationService.stopTracking();
     _cleanupSocket();
     super.dispose();
   }
@@ -297,13 +303,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   ) {
     final phaseName = switch (phase) {
       _MapPhase.preview => 'Xem trước tuyến',
-      _MapPhase.running => _isMoving ? 'Đang di chuyển...' : 'Chờ tại trạm',
+      _MapPhase.running => _isRealGps
+          ? 'GPS thực — Đang theo dõi'
+          : (_isMoving ? 'Demo — Đang di chuyển...' : 'Chờ tại trạm'),
       _MapPhase.finished => 'Đã đến trạm cuối',
     };
 
     final dotColor = switch (phase) {
       _MapPhase.preview => AppColors.warning,
-      _MapPhase.running => _isMoving ? AppColors.success : AppColors.warning,
+      _MapPhase.running => (_isRealGps || _isMoving)
+          ? AppColors.success
+          : AppColors.warning,
       _MapPhase.finished => AppColors.success,
     };
 
@@ -638,6 +648,40 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
             ),
           ),
         ),
+
+        const SizedBox(height: 10),
+
+        // ─── Nút CHẠY (GPS thật) ───
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _isStarting ? null : () => _handleRealStart(trip.id),
+            icon: _isStarting
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.gps_fixed_rounded, size: 26),
+            label: Text(_isStarting ? 'Đang khởi hành...' : 'CHẠY'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4285F4),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -647,12 +691,17 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   Widget _buildRunningContent(BuildContext context, TripModel trip) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    // Đang di chuyển → hiển thị info trạm đang hướng đến
+    // ── Real GPS mode: luôn hiển thị info trạm tiếp theo ──
+    if (_isRealGps) {
+      return _buildMovingInfo(context);
+    }
+
+    // ── Demo mode: đang di chuyển → hiển thị info trạm đang hướng đến ──
     if (_isMoving) {
       return _buildMovingInfo(context);
     }
 
-    // Dừng tại trạm → hiển thị nút Tiếp tục
+    // Demo mode: dừng tại trạm → hiển thị nút Tiếp tục
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1060,6 +1109,161 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     }
   }
 
+  /// Bấm CHẠY (GPS thật) → gọi API startTrip → điểm danh trạm đầu → bắt đầu GPS.
+  Future<void> _handleRealStart(String tripId) async {
+    setState(() => _isStarting = true);
+
+    // Xin quyền GPS
+    final hasPermission = await _locationService.requestPermission();
+    if (!hasPermission) {
+      if (mounted) {
+        setState(() => _isStarting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cần cấp quyền truy cập vị trí để chạy GPS thật'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
+    final ctrl = widget.driverHomeController;
+    final success = await ctrl.startTrip(tripId);
+
+    if (!success || !mounted) {
+      if (mounted) setState(() => _isStarting = false);
+      return;
+    }
+
+    ctrl.clearPendingTrip();
+
+    // Kết nối socket và join room để broadcast vị trí cho parent/student
+    await widget.socketService.connect();
+    widget.socketService.joinTrip(tripId);
+
+    // Gọi API updateStation(0) cho trạm đầu tiên
+    ctrl.updateStation(tripId, 0).catchError((_) => false);
+
+    _nextStationIdx = 1;
+    _isRealGps = true;
+
+    // Mở bottom sheet điểm danh trạm đầu → chờ đóng sheet
+    if (_orderedStations.isNotEmpty && mounted) {
+      await showAttendanceSheet(
+        context: context,
+        tripId: tripId,
+        stationId: _orderedStations.first.station.id,
+        stationName: _orderedStations.first.station.name,
+        controller: ctrl,
+      );
+    }
+
+    // Sau khi đóng sheet → tắt loading + bắt đầu GPS tracking
+    if (mounted) {
+      setState(() => _isStarting = false);
+      _startGpsTracking(tripId);
+    }
+  }
+
+  /// Khởi động GPS tracking thật từ thiết bị.
+  void _startGpsTracking(String tripId) {
+    _locationService.startTracking(
+      tripId: tripId,
+      socketService: widget.socketService,
+      stations: _orderedStations,
+      initialNextStationIdx: _nextStationIdx,
+      onPositionChanged: _onGpsPositionChanged,
+      onStationReached: _onGpsStationReached,
+    );
+  }
+
+  /// Callback khi GPS cập nhật vị trí mới.
+  void _onGpsPositionChanged(double lat, double lng) {
+    if (!mounted) return;
+
+    final newPos = LatLng(lat, lng);
+
+    // Tìm polyline index gần nhất để cập nhật traveled polyline
+    if (_polylinePoints.length >= 2) {
+      int closestIdx = 0;
+      double minDist = double.infinity;
+      for (int i = 0; i < _polylinePoints.length; i++) {
+        final dx = _polylinePoints[i].latitude - lat;
+        final dy = _polylinePoints[i].longitude - lng;
+        final d = dx * dx + dy * dy;
+        if (d < minDist) {
+          minDist = d;
+          closestIdx = i;
+        }
+      }
+      _currentPolyIdx = closestIdx;
+    }
+
+    setState(() => _busPosition = newPos);
+  }
+
+  /// Callback khi GPS detect xe đến gần trạm (≤ 50m).
+  void _onGpsStationReached(
+    int stationIndex,
+    TripRouteStationModel routeStation,
+  ) {
+    if (!mounted) return;
+
+    _nextStationIdx = stationIndex + 1;
+
+    // Snap bus vào vị trí trạm
+    setState(() {
+      _busPosition = LatLng(
+        routeStation.station.latitude,
+        routeStation.station.longitude,
+      );
+    });
+
+    // Gọi API updateStation
+    final trip = widget.driverHomeController.activeTrip;
+    if (trip != null) {
+      widget.driverHomeController
+          .updateStation(trip.id, stationIndex)
+          .catchError((_) => false);
+    }
+
+    // Kiểm tra trạm cuối
+    if (_nextStationIdx >= _orderedStations.length) {
+      setState(() => _reachedLastStation = true);
+      _locationService.stopTracking();
+
+      // Chiều về: trạm cuối vẫn cần điểm danh trả HS
+      if (trip != null && trip.isDropOff) {
+        _triggerAttendance(routeStation);
+      }
+      return;
+    }
+
+    // Hiển thị màn hình điểm danh (station detection đã pause trong LocationService)
+    _triggerGpsAttendance(routeStation);
+  }
+
+  /// Hiển thị điểm danh cho GPS mode → resume detection sau khi đóng sheet.
+  void _triggerGpsAttendance(TripRouteStationModel routeStation) {
+    final trip = widget.driverHomeController.activeTrip;
+    if (trip == null || !mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await showAttendanceSheet(
+        context: context,
+        tripId: trip.id,
+        stationId: routeStation.station.id,
+        stationName: routeStation.station.name,
+        controller: widget.driverHomeController,
+      );
+      // Sau khi đóng sheet → resume station detection
+      _locationService.resumeStationDetection();
+    });
+  }
+
   /// Bấm TIẾP TỤC → tiếp tục di chuyển (API updateStation đã gọi khi đến trạm).
   Future<void> _handleContinue(String tripId) async {
     // Nếu đã qua hết các trạm → hoàn thành
@@ -1094,6 +1298,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
     if (confirmed == true) {
       _moveTimer?.cancel();
+      _locationService.stopTracking();
       widget.socketService.leaveTrip(tripId);
 
       final success =
@@ -1109,6 +1314,7 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
           _reachedLastStation = false;
           _isMoving = false;
           _nextStationIdx = 0;
+          _isRealGps = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
