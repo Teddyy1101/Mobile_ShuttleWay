@@ -47,8 +47,8 @@ class QuickActionsWidget extends StatelessWidget {
           onTap: onLeaveRequest ?? () {},
         ),
         _ActionButton(
-          icon: Icons.history_rounded,
-          label: 'Lịch sử',
+          icon: Icons.receipt_long_rounded,
+          label: 'Vé của tôi',
           colorScheme: colorScheme,
           isDark: isDark,
           onTap: onHistory ?? () {},

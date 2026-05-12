@@ -159,6 +159,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLG),
       child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: cardBg,
           borderRadius: BorderRadius.circular(AppConstants.radiusXL),
