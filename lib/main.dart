@@ -42,13 +42,16 @@ import 'presentation/home/controllers/schedule_controller.dart';
 import 'presentation/home/controllers/driver_schedule_controller.dart';
 import 'presentation/notification/controllers/notification_controller.dart';
 import 'presentation/home/controllers/chatbot_controller.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('vi');
 
   // ─── Firebase ──
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   final fcmService = FcmService();
   await fcmService.initialize();
 
@@ -194,7 +197,7 @@ class _SafeWheelsAppState extends State<SafeWheelsApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SafeWheels',
+      title: 'ShuttleWay',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
