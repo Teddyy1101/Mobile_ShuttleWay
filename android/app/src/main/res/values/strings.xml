@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">ShuttleWay</string>
     <string name="facebook_app_id">2170791816659010</string>
     <string name="facebook_client_token">8cf59efd8aa67ae71e1b196619ed16f9</string>
     <string name="fb_login_protocol_scheme">fb2170791816659010</string>

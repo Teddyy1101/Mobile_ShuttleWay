@@ -154,7 +154,9 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
           ),
         ),
       ),
-      body: ListenableBuilder(
+      body: _isParent && _children.isEmpty
+          ? _buildNoChildLinkedBody(theme, isDark, colorScheme)
+          : ListenableBuilder(
         listenable: widget.leaveRequestController,
         builder: (context, _) {
           return SingleChildScrollView(
@@ -382,6 +384,67 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildNoChildLinkedBody(ThemeData theme, bool isDark, ColorScheme colorScheme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.paddingXL),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.darkCard
+                    : Colors.orange[50],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.person_add_disabled_rounded,
+                size: 40,
+                color: isDark ? Colors.orange[300] : Colors.orange[400],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Chưa liên kết học sinh',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Bạn cần liên kết tài khoản học sinh trong mục Cá nhân trước khi đăng ký xin nghỉ.',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? Colors.grey[400] : Colors.grey[500],
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+              label: const Text('Quay lại'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colorScheme.primary,
+                side: BorderSide(color: colorScheme.primary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

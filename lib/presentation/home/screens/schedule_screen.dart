@@ -43,6 +43,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _weekPageController = PageController(initialPage: _initialPage);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Đặt chế độ phụ huynh cho controller
+      widget.scheduleController.setParentMode(widget.profileController.isParent);
+
       // Nếu là PARENT → tự động chọn học sinh đầu tiên
       if (widget.profileController.isParent) {
         final children = widget.profileController.linkedUsers;
@@ -51,6 +54,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           widget.scheduleController.selectChild(children.first);
           return; // selectChild sẽ gọi fetchTrips
         }
+        // Nếu parent chưa liên kết học sinh nào → không gọi fetchTrips
+        if (children.isEmpty) return;
       }
       widget.scheduleController.fetchTrips();
     });
@@ -76,6 +81,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   void _navigateToLeaveRequest() {
+    // Nếu là parent chưa liên kết học sinh → thông báo
+    if (widget.profileController.isParent &&
+        widget.profileController.linkedUsers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Vui lòng liên kết tài khoản học sinh trong mục Cá nhân trước khi đăng ký nghỉ',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -121,8 +139,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               child: ListenableBuilder(
                 listenable: widget.scheduleController,
                 builder: (context, _) {
+                  // Nếu là parent chưa liên kết học sinh → hiện thông báo
+                  final isUnlinkedParent = widget.profileController.isParent &&
+                      widget.profileController.linkedUsers.isEmpty;
+
                   return RefreshIndicator(
-                    onRefresh: () => widget.scheduleController.fetchTrips(),
+                    onRefresh: () {
+                      if (isUnlinkedParent) {
+                        return Future.value();
+                      }
+                      return widget.scheduleController.fetchTrips();
+                    },
                     child: CustomScrollView(
                       slivers: [
                         SliverToBoxAdapter(
@@ -134,7 +161,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                               children: [
                                 _buildDateAndLeaveAction(theme, isDark),
                                 const SizedBox(height: AppConstants.paddingLG),
-                                _buildTripsList(theme, isDark),
+                                if (isUnlinkedParent)
+                                  _buildNoChildLinkedMessage(theme, isDark)
+                                else
+                                  _buildTripsList(theme, isDark),
                               ],
                             ),
                           ),
@@ -493,7 +523,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         final children = widget.profileController.linkedUsers;
         final selectedChild = widget.scheduleController.selectedChild;
 
-        if (children.isEmpty) return const SizedBox.shrink();
+        if (children.isEmpty) {
+          return const SizedBox.shrink();
+        }
 
         return Container(
           padding: const EdgeInsets.symmetric(
@@ -667,6 +699,56 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ─── No Child Linked Message (PARENT chưa liên kết) ─────────
+
+  Widget _buildNoChildLinkedMessage(ThemeData theme, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 48),
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.darkCard
+                    : Colors.orange[50],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.link_off_rounded,
+                size: 36,
+                color: isDark ? Colors.orange[300] : Colors.orange[400],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Chưa liên kết học sinh',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                'Vui lòng liên kết tài khoản học sinh trong mục Cá nhân để xem lịch trình',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? Colors.grey[600] : Colors.grey[400],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

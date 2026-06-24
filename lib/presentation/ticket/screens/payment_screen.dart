@@ -8,6 +8,8 @@ import '../../../data/models/ticket_model.dart';
 import '../controllers/payment_controller.dart';
 import 'payment_webview_screen.dart';
 import 'sepay_qr_screen.dart';
+import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'ticket_detail_screen.dart';
 
 /// Giao diện 1:1 từ HTML mockup. Dùng cho cả Phụ huynh và Học sinh.
@@ -340,17 +342,22 @@ class PaymentScreen extends StatelessWidget {
   ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(fontSize: 13, color: labelColor),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: valueColor,
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: valueColor,
+            ),
           ),
         ),
       ],
@@ -1173,38 +1180,46 @@ class PaymentScreen extends StatelessWidget {
     }
 
     if (needsUrl && paymentController.paymentUrl != null) {
-      // VNPay / MoMo: mở WebView thanh toán trong app
-      final result = await Navigator.push<PaymentWebViewResult>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PaymentWebViewScreen(
-            paymentUrl: paymentController.paymentUrl!,
-            title: paymentController.selectedMethod == 'VNPAY'
-                ? 'Thanh toán VNPay'
-                : 'Thanh toán MoMo',
-          ),
-        ),
-      );
-
-      if (!context.mounted) return;
-
-      if (result != null) {
-        // Xác nhận kết quả thanh toán với backend
-        // (cập nhật DB + kích hoạt vé + gửi thông báo)
-        final txnId = paymentController.transaction?.id;
-        if (txnId != null) {
-          await paymentController.confirmPayment(
-            transactionId: txnId,
-            responseCode: result.responseCode,
-          );
+      if (kIsWeb) {
+        // Trên Web: Mở tab mới thay vì dùng WebView (gây lỗi xám màn hình)
+        final uri = Uri.parse(paymentController.paymentUrl!);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, webOnlyWindowName: '_blank');
+          if (!context.mounted) return;
+          _showWebPaymentConfirmDialog(context);
+        } else {
+          if (!context.mounted) return;
+          AppToast.showError(context, 'Không thể mở trang thanh toán');
         }
+      } else {
+        // VNPay / MoMo: mở WebView thanh toán trong app
+        final result = await Navigator.push<PaymentWebViewResult>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PaymentWebViewScreen(
+              paymentUrl: paymentController.paymentUrl!,
+              title: paymentController.selectedMethod == 'VNPAY'
+                  ? 'Thanh toán VNPay'
+                  : 'Thanh toán MoMo',
+            ),
+          ),
+        );
 
         if (!context.mounted) return;
 
-        // Nhận được kết quả từ WebView → hiển thị popup
-        _showPaymentResultDialog(context, result);
+        if (result != null) {
+          final txnId = paymentController.transaction?.id;
+          if (txnId != null) {
+            await paymentController.confirmPayment(
+              transactionId: txnId,
+              responseCode: result.responseCode,
+            );
+          }
+
+          if (!context.mounted) return;
+          _showPaymentResultDialog(context, result);
+        }
       }
-      // result == null nghĩa là user bấm nút X đóng WebView (hủy thanh toán)
     } else if (paymentController.selectedMethod == 'SEPAY' &&
         paymentController.transaction != null) {
       // SePay: mở màn hình QR chuyển khoản fullscreen
@@ -1220,6 +1235,27 @@ class PaymentScreen extends StatelessWidget {
         );
       }
     }
+  }
+
+  /// Popup xác nhận cho Web
+  void _showWebPaymentConfirmDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Thanh toán'),
+        content: const Text(
+            'Vui lòng hoàn tất thanh toán ở tab mới.\n\nSau khi thanh toán xong, bạn có thể quay lại app và vào mục "Vé của tôi" để xem trạng thái.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx); // đóng dialog
+              Navigator.pop(context); // quay lại màn hình trước
+            },
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Hiển thị popup kết quả thanh toán (thành công / thất bại).

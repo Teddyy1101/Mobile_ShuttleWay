@@ -26,8 +26,17 @@ class ScheduleController extends ChangeNotifier {
   ChildModel? _selectedChild;
   ChildModel? get selectedChild => _selectedChild;
 
+  // Chế độ phụ huynh — nếu true, bắt buộc phải có selectedChild mới gọi API
+  bool _isParentMode = false;
+  bool get isParentMode => _isParentMode;
+
   ScheduleController({required TripRepository tripRepository})
       : _tripRepository = tripRepository;
+
+  /// Đặt chế độ phụ huynh (gọi từ screen khi biết user role).
+  void setParentMode(bool value) {
+    _isParentMode = value;
+  }
 
   /// Chọn ngày → tự động load lại trips.
   void setSelectedDate(DateTime date) {
@@ -48,6 +57,15 @@ class ScheduleController extends ChangeNotifier {
 
   /// Load lịch trình từ API theo ngày đã chọn.
   Future<void> fetchTrips() async {
+    // Nếu là phụ huynh nhưng chưa chọn/liên kết học sinh → bỏ qua
+    if (_isParentMode && _selectedChild == null) {
+      _todayTrips = [];
+      _error = null;
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     _error = null;
     notifyListeners();
