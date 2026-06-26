@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:gal/gal.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../data/models/ticket_model.dart';
 
 /// Màn hình chi tiết vé xe dạng thẻ (card) với mã QR tự động refresh.
@@ -27,6 +31,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   late String _qrData;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+
+  final GlobalKey _ticketKey = GlobalKey();
+  bool _isDownloading = false;
 
   @override
   void initState() {
@@ -87,7 +94,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
               child: Column(
                 children: [
                   const SizedBox(height: AppConstants.paddingSM),
-                  _buildTicketCard(theme, isDark),
+                  RepaintBoundary(
+                    key: _ticketKey,
+                    child: _buildTicketCard(theme, isDark),
+                  ),
                   const SizedBox(height: AppConstants.paddingLG),
                   _buildActionButtons(theme, isDark),
                 ],
@@ -626,9 +636,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
               icon: Icons.download,
               label: 'Tải vé về',
               theme: theme,
-              onTap: () {
-                // TODO: implement download
-              },
+              isLoading: _isDownloading,
+              onTap: _isDownloading ? () {} : _handleDownloadTicket,
             ),
           ),
         ],
@@ -688,6 +697,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     required String label,
     required ThemeData theme,
     required VoidCallback onTap,
+    bool isLoading = false,
   }) {
     return Material(
       color: theme.colorScheme.primary,
@@ -704,14 +714,24 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: AppConstants.iconSizeSM,
-                color: AppColors.darkTextPrimary,
-              ),
+              if (isLoading)
+                const SizedBox(
+                  width: AppConstants.iconSizeSM,
+                  height: AppConstants.iconSizeSM,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.darkTextPrimary),
+                  ),
+                )
+              else
+                Icon(
+                  icon,
+                  size: AppConstants.iconSizeSM,
+                  color: AppColors.darkTextPrimary,
+                ),
               const SizedBox(width: AppConstants.paddingSM),
               Text(
-                label,
+                isLoading ? 'Đang tải...' : label,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -723,6 +743,72 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _handleDownloadTicket() async {
+    setState(() => _isDownloading = true);
+
+    try {
+      // Yêu cầu quyền lưu ảnh
+      final hasAccess = await Gal.hasAccess(toAlbum: true);
+      if (!hasAccess) {
+        final requestResult = await Gal.requestAccess(toAlbum: true);
+        if (!requestResult) {
+          if (mounted) {
+            AppToast.showError(
+              context,
+              'Cần cấp quyền truy cập thư viện ảnh',
+            );
+          }
+          return;
+        }
+      }
+
+      // Đợi rendering xong trước khi capture
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      // Capture thẻ vé qua RepaintBoundary
+      final boundary = _ticketKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) {
+        if (mounted) {
+          AppToast.showError(context, 'Không thể tải vé');
+        }
+        return;
+      }
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      if (byteData == null) {
+        if (mounted) {
+          AppToast.showError(context, 'Không thể xuất ảnh vé');
+        }
+        return;
+      }
+
+      final pngBytes = byteData.buffer.asUint8List();
+
+      // Lưu vào Gallery qua Gal
+      await Gal.putImageBytes(pngBytes, album: 'SafeWheels');
+
+      if (mounted) {
+        AppToast.showSuccess(context, 'Đã lưu vé vào thư viện ảnh');
+      }
+    } on GalException catch (e) {
+      if (mounted) {
+        AppToast.showError(context, 'Không thể lưu ảnh: ${e.type.name}');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(context, 'Lỗi khi tải vé: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloading = false);
+      }
+    }
   }
 
   // ─── Helpers ──────────────────────────────────────────────
